@@ -1,2 +1,2 @@
-USE_CUDA = False
+USE_CUDA = True
 RANDOM_SEED = 42
