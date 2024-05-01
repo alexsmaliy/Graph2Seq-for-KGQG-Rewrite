@@ -1,5 +1,6 @@
 name: Graph2Seq-for-KGQG-Rewrite-1
 channels:
+  - pytorch
   - defaults
 dependencies:
   - _anaconda_depends=2024.02=py311_openblas_1
@@ -69,7 +70,7 @@ dependencies:
   - bzip2=1.0.8=h620ffc9_4
   - c-ares=1.19.1=h80987f9_0
   - c-blosc2=2.12.0=h7df6c2f_0
-  - ca-certificates=2023.12.12=hca03da5_0
+  - ca-certificates=2024.3.11=hca03da5_0
   - cachetools=4.2.2=pyhd3eb1b0_0
   - cctools=949.0.1=hc179dcd_25
   - cctools_osx-arm64=949.0.1=h332cad3_25
@@ -224,6 +225,7 @@ dependencies:
   - libgfortran5=11.3.0=h009349e_28
   - libglib=2.78.4=h0a96307_0
   - libiconv=1.16=h1a28f6b_2
+  - libjpeg-turbo=2.0.0=h1a28f6b_0
   - liblief=0.12.3=h313beb8_0
   - libllvm14=14.0.6=h7ec7a93_3
   - libmamba=1.5.6=h15e39b3_0
@@ -290,7 +292,7 @@ dependencies:
   - oniguruma=6.9.7.1=h1a28f6b_0
   - openjpeg=2.3.0=h7a6adac_2
   - openpyxl=3.0.10=py311h80987f9_0
-  - openssl=3.0.13=h1a28f6b_0
+  - openssl=3.0.13=h1a28f6b_1
   - orc=1.7.4=hdca1487_1
   - overrides=7.4.0=py311hca03da5_0
   - packaging=23.1=py311hca03da5_0
@@ -374,6 +376,7 @@ dependencies:
   - python-tzdata=2023.3=pyhd3eb1b0_0
   - python.app=3=py311h80987f9_0
   - pytoolconfig=1.2.6=py311hca03da5_0
+  - pytorch=2.3.0=py3.11_0
   - pytz=2023.3.post1=py311hca03da5_0
   - pyviz_comms=3.0.0=py311hca03da5_0
   - pywavelets=1.5.0=py311hb9f6ed7_0
@@ -455,6 +458,7 @@ dependencies:
   - toml=0.10.2=pyhd3eb1b0_0
   - tomlkit=0.11.1=py311hca03da5_0
   - toolz=0.12.0=py311hca03da5_0
+  - torchvision=0.18.0=py311_cpu
   - tornado=6.3.3=py311h80987f9_0
   - tqdm=4.65.0=py311hb6e6a13_0
   - traitlets=5.7.1=py311hca03da5_0
