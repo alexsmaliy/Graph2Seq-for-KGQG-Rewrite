@@ -4,6 +4,7 @@ import pickle
 from typing import TypedDict
 
 import config
+from utils import EOS_TOKEN, SOS_TOKEN, PAD_TOKEN, UNK_TOKEN
 from utils import Dataset, Logger
 
 class VocabStats(TypedDict):
@@ -52,6 +53,18 @@ def _count_stats(dataset: Dataset) -> VocabStats:
         "edge_type_count": edge_type_count,
     }
 
+class Vocabulary(object):
+    def __init__(self):
+        self.pad_ind = 0
+        self.sos_ind = 1
+        self.eos_ind = 2
+        self.unk_ind = 3
+        self.reserved = [PAD_TOKEN, SOS_TOKEN, EOS_TOKEN, UNK_TOKEN]
+        self.index2word = list(self.reserved)
+        self.word2index = dict(zip(self.reserved, range(len(self.reserved))))
+        self.word2count = Counter()
+        self.embeddings = None
+
 class VocabModel(object):
     def __init__(self, dataset: Dataset, logger: Logger):
         logger.log("Building vocab model!")
@@ -60,6 +73,8 @@ class VocabModel(object):
         logger.log(f"Number of node IDs: {len(counts['node_id_count'])}")
         logger.log(f"Number of node types: {len(counts['node_type_count'])}")
         logger.log(f"Number of edge types: {len(counts['edge_type_count'])}")
+
+        self.word_vocab = Vocabulary()
 
 
 def load_or_init(dataset: Dataset, logger: Logger):

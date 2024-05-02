@@ -1,6 +1,9 @@
 import regex
 
+SOS_TOKEN = '<s>'
 EOS_TOKEN = '</s>'
+PAD_TOKEN = '#pad#'
+UNK_TOKEN = '<unk>'
 
 article_regex = regex.compile(r"\b(a|an|the)\b")
 multiple_whitespace_regex = regex.compile(r"\s{2,}")
