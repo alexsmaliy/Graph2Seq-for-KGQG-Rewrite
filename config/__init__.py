@@ -1,2 +1,1 @@
-USE_CUDA = True
-RANDOM_SEED = 42
+from .config import *

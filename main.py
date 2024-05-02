@@ -1,7 +1,10 @@
-from config import config
 import numpy as np
 import random
 import torch
+
+import config
+
+from model.handler import ModelHandler
 
 
 def set_random_seed_everywhere(seed):
@@ -11,8 +14,8 @@ def set_random_seed_everywhere(seed):
 
 
 def main():
-    set_random_seed_everywhere(config["random_seed"])
-    # model = ModelHandler(config)
+    set_random_seed_everywhere(config.RANDOM_SEED)
+    model = ModelHandler()
     # model.train()
     # model.test()
 
