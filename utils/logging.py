@@ -11,18 +11,16 @@ RUNLOG_FNAME = 'run.log'
 
 
 class Logger(object):
-    def __init__(self, dirpath):
-        timestamp = int(time.time())
-        logdir = os.path.join(dirpath, f"{timestamp}")
-        os.makedirs(logdir, exist_ok=True)
+    __timestamp = int(time.time())
+    log_dir = os.path.join(config.LOG_DIR, f"{__timestamp}")
+    metrics_log = os.path.join(log_dir, METRICS_FNAME)
+    run_log = os.path.join(log_dir, RUNLOG_FNAME)
 
-        self.dirpath = logdir
-        self.metrics_log = os.path.join(logdir, METRICS_FNAME)
-        self.run_log = os.path.join(logdir, RUNLOG_FNAME)
+    def __init__(self):
+        os.makedirs(Logger.log_dir, exist_ok=True)
+        self._record_config()
 
-        self._log_config()
-
-    def log(self, stuff, fpath, /, echo=True, as_json=False):
+    def log(self, stuff, fpath=run_log, /, echo=True, as_json=False):
         if as_json:
             stuff = json.dumps(stuff, indent=3, ensure_ascii=False)
         if echo:
@@ -30,7 +28,7 @@ class Logger(object):
         with open(fpath, "w") as f:
             f.write(f"{stuff}\n")
 
-    def _log_config(self):
+    def _record_config(self):
         run_config = (
             (k, v) for (k, v)
             in inspect.getmembers(config)
@@ -40,6 +38,5 @@ class Logger(object):
         run_config = "\n".join(f"{k} = {v}" for k, v in run_config)
         self.log(
             run_config,
-            os.path.join(self.dirpath, CONFIG_FNAME),
-            echo=True,
+            os.path.join(Logger.log_dir, CONFIG_FNAME),
         )

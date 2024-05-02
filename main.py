@@ -4,7 +4,7 @@ import torch
 
 import config
 
-from model.handler import ModelHandler
+from model.manager import ModelManager
 
 
 def set_random_seed_everywhere(seed):
@@ -15,7 +15,7 @@ def set_random_seed_everywhere(seed):
 
 def main():
     set_random_seed_everywhere(config.RANDOM_SEED)
-    model = ModelHandler()
+    model = ModelManager()
     # model.train()
     # model.test()
 

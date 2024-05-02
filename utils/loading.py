@@ -1,5 +1,4 @@
 import json
-import os.path
 from collections import defaultdict, OrderedDict
 from typing import Literal, Optional, TypedDict, Union
 
@@ -134,9 +133,10 @@ def _populate_graph_from_struct(
         graph["g_node_name_words"].append(node_name)
 
         if len(answer_ids) > 0:
-            answer_or_not.append(1 if node_key in answer_ids else 2)
+            indicator: Indicator = 1 if node_key in answer_ids else 2
         else:
-            answer_or_not.append(1 if normalize_string(node_name) in normalized_answers else 2)
+            indicator: Indicator = 1 if normalize_string(node_name) in normalized_answers else 2
+        answer_or_not.append(indicator)
 
     assert any(x == 1 for x in answer_or_not), \
         f"No matching answers! RAW:\n{json.dumps(struct, indent=3)} PARSED:\n{json.dumps(graph, indent=3)}"
@@ -178,17 +178,24 @@ def _get_dataset(data_fpath: str) -> tuple[Dataset, list[int]]:
             all_seq_lens.append(len(out_seq_seq.words))
     return all_instances, all_seq_lens
 
+def _log_loading_diagnostics(stuff: tuple[str, Dataset, list[int]], logger: Logger):
+    name, dataset, lengths = stuff
+    logger.log(f"# of {name} examples: {len(dataset)}")
+    logger.log(f"max {name} seq length: {np.max(lengths)}")
+    logger.log(f"min {name} seq length: {np.min(lengths)}")
+    logger.log(f"mean {name} seq length: {np.mean(lengths)}")
+
 def get_datasets(logger: Logger) -> Datasets:
     train_set, train_seq_lens = _get_dataset(config.TRAINING_DATASET)
     dev_set, dev_seq_lens = _get_dataset(config.DEVELOP_DATASET)
     test_set, test_seq_lens = _get_dataset(config.TESTING_DATASET)
-    for (name, data, lengths) in [
-        ("training", train_set, train_seq_lens), ("dev", dev_set, dev_seq_lens), ("test", test_set, test_seq_lens)
-    ]:
-        logger.log(f"# of {name} examples: {len(data)}", logger.run_log, echo=True)
-        logger.log(f"max {name} seq length: {np.max(lengths)}", logger.run_log, echo=True)
-        logger.log(f"min {name} seq length: {np.min(lengths)}", logger.run_log, echo=True)
-        logger.log(f"mean {name} seq length: {np.mean(lengths)}", logger.run_log, echo=True)
+    loggables = [
+        ("training", train_set, train_seq_lens),
+        ("dev", dev_set, dev_seq_lens),
+        ("test", test_set, test_seq_lens)
+    ]
+    for loggable in loggables:
+        _log_loading_diagnostics(loggable, logger)
     return {
         "train": train_set,
         "dev": dev_set,
