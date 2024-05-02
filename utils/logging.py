@@ -25,7 +25,7 @@ class Logger(object):
             stuff = json.dumps(stuff, indent=3, ensure_ascii=False)
         if echo:
             print(stuff)
-        with open(fpath, "w") as f:
+        with open(fpath, "a") as f:
             f.write(f"{stuff}\n")
 
     def _record_config(self):

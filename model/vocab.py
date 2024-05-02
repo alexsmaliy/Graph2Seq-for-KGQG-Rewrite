@@ -6,7 +6,7 @@ from utils import Dataset, Logger
 
 class VocabModel(object):
     def __init__(self, dataset: Dataset, logger: Logger):
-        logger.log(f"Building vocab model!")
+        logger.log("Building vocab model!")
 
 def load_or_init(dataset: Dataset, logger: Logger):
     fpath = config.VOCAB_MODEL_PATH
