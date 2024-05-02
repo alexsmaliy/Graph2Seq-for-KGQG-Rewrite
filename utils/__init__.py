@@ -1,4 +1,4 @@
 from .data_loading import get_datasets
-from .logging import *
+from .logging import Logger
 from .metrics import *
-from .strings import normalize_string
+from .strings import EOS_TOKEN, normalize_string

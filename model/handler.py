@@ -4,7 +4,6 @@ import config
 
 from utils import data_loading, logging, metrics
 
-
 class ModelHandler(object):
     def __init__(self):
         self.dev_loss = metrics.AverageMeter()
@@ -25,4 +24,3 @@ class ModelHandler(object):
             self.device = torch.device("cpu")
 
         data_loading.get_datasets(self.logger)
-

@@ -1,10 +1,14 @@
 import json
+import os.path
 from collections import defaultdict, OrderedDict
-from pprint import pprint
 from typing import Literal, Optional, TypedDict, Union
 
+from nltk.tokenize import wordpunct_tokenize
+import numpy as np
+
 import config
-from utils import normalize_string
+from utils.logging import Logger
+from utils.strings import EOS_TOKEN, normalize_string
 
 ##############
 # DATA TYPES #
@@ -37,61 +41,50 @@ class PreparedGraph(TypedDict):
     num_virtual_nodes: int
     num_virtual_edges: int
 
+DataInstance = tuple["Seq", "Seq", list["Seq"]]
+Dataset = list[DataInstance]
+
+class Datasets(TypedDict):
+    train: Dataset
+    dev: Dataset
+    test: Dataset
+
 ##############
 # OPERATIONS #
 ##############
-def get_datasets(logger):
-    training_dataset = _get_dataset(config.TRAINING_DATASET)
-    dev_dataset = _get_dataset(config.DEVELOP_DATASET)
-    test_dataset = _get_dataset(config.TESTING_DATASET)
-    return {
-        "train": training_dataset,
-        "dev": dev_dataset,
-        "test": test_dataset,
-    }
+def _tokenize_list(lst: list[str]):
+    return [wordpunct_tokenize(w.lower()) for w in lst]
 
-def _get_dataset(data_fpath: str):
-    with open(data_fpath, 'r') as data_file:
-        for line in data_file:
-            graph, answers = _get_graph_from_line(line)
-
-def _get_graph_from_line(line: str) -> tuple[PreparedGraph, list[str]]:
-    struct: RawAnswerData = json.loads(
-        line.strip(),
-        object_pairs_hook=lambda tuples: OrderedDict(tuples),
-    )
-
-    assert len(struct.get("inGraph", {}).get("g_adj", {})) > 0, \
-        f"Bad input: {line}"
-
-    answers = struct["answers"]
-    normalized_answers = set(normalize_string(answer) for answer in answers)
-
-    answer_ids = set(struct.get("answer_ids", []))
-    out_seq = struct["outSeq"]
-
-    graph = _blank_graph()
-    _populate_graph_from_struct(struct, graph, normalized_answers, answer_ids)
-    _levi_graph_transform(struct, graph)
-    return graph, answers
-
-def _populate_graph_from_struct(
-    struct: RawAnswerData, graph: PreparedGraph,
-    answer_ids: set[str], normalized_answers: set[str],
-):
-    for index, (node_key, node_name) in enumerate(struct["inGraph"]["g_node_names"].items()):
-        graph["g_node_ids"][node_key] = index
-        graph["g_node_name_words"].append(node_name)
-
-        # this is the vector encoding if a node is an expected answer
-        answer_or_not = graph["g_node_ans_match"]
-        if len(answer_ids) > 0:
-            answer_or_not.append(1 if node_key in answer_ids else 2)
+class Seq(object):
+    def __init__(self, data: PreparedGraph | str, /, is_graph=False, end_sym=None):
+        self.graph = data if is_graph else None
+        if is_graph:
+            self.graph["g_node_name_words"] = _tokenize_list(self.graph['g_node_name_words'])
+            self.graph["g_node_type_words"] = _tokenize_list(self.graph["g_node_type_words"])
+            self.graph["g_edge_type_words"] = _tokenize_list(self.graph["g_edge_type_words"])
         else:
-            answer_or_not.append(1 if normalize_string(node_name) in normalized_answers else 2)
+            lower = data.lower()
+            toks = wordpunct_tokenize(lower)
+            self.src = " ".join(toks)
+            self.tokText = lower
+            self.words = toks
+            if end_sym is not None:
+                self.tokText = f"{self.tokText} {end_sym}"
+                self.words.append(end_sym)
 
-        assert any(x == 1 for x in answer_or_not), \
-            f"No matching answers! Raw: {pprint(struct)} Parsed: {pprint(graph)}"
+def _blank_graph() -> PreparedGraph:
+    return {
+        "g_node_ids": {},
+        "g_node_name_words": [],
+        "g_node_type_words": [],
+        "g_node_type_ids": [],
+        "g_node_ans_match": [],
+        "g_edge_type_words": [],
+        "g_edge_type_ids": [],
+        "g_adj": defaultdict(dict),
+        "num_virtual_nodes": 0,
+        "num_virtual_edges": 0,
+    }
 
 def _normalize_edge_type(raw_edge: str) -> str:
     """'place_of_birth' or '/people/person/place_of_birth' => 'place of birth'"""
@@ -129,22 +122,80 @@ def _levi_graph_transform(struct: RawAnswerData, graph: PreparedGraph):
     graph["num_virtual_nodes"] = edge_index
     graph["num_virtual_edges"] = virtual_edge_index
 
+def _populate_graph_from_struct(
+    struct: RawAnswerData, graph: PreparedGraph,
+    normalized_answers: set[str], answer_ids: set[str],
+):
+    # this is the vector encoding if a node is an expected answer
+    answer_or_not = graph["g_node_ans_match"]
 
-def _blank_graph() -> PreparedGraph:
+    for index, (node_key, node_name) in enumerate(struct["inGraph"]["g_node_names"].items()):
+        graph["g_node_ids"][node_key] = index
+        graph["g_node_name_words"].append(node_name)
+
+        if len(answer_ids) > 0:
+            answer_or_not.append(1 if node_key in answer_ids else 2)
+        else:
+            answer_or_not.append(1 if normalize_string(node_name) in normalized_answers else 2)
+
+    assert any(x == 1 for x in answer_or_not), \
+        f"No matching answers! RAW:\n{json.dumps(struct, indent=3)} PARSED:\n{json.dumps(graph, indent=3)}"
+
+def _process_line(line: str) -> tuple[PreparedGraph, str, list[str]]:
+    struct: RawAnswerData = json.loads(
+        line.strip(),
+        object_pairs_hook=lambda tuples: OrderedDict(tuples),
+    )
+
+    assert len(struct.get("inGraph", {}).get("g_adj", {})) > 0, \
+        f"Bad input: {line}"
+
+    answers = struct["answers"]
+    normalized_answers = set(normalize_string(answer) for answer in answers)
+
+    answer_ids = set(struct.get("answer_ids", []))
+    out_seq = struct["outSeq"]
+
+    graph = _blank_graph()
+    _populate_graph_from_struct(struct, graph, normalized_answers, answer_ids)
+    _levi_graph_transform(struct, graph)
+    return graph, out_seq, answers
+
+def _get_dataset(data_fpath: str) -> tuple[Dataset, list[int]]:
+    all_instances: list[DataInstance] = []
+    all_seq_lens: list[int] = []
+    with open(data_fpath, "r") as data_file:
+        for line in data_file:
+            graph, out_seq, answers = _process_line(line)
+            graph_seq = Seq(graph, is_graph=True)
+            out_seq_seq = Seq(out_seq, is_graph=False, end_sym=EOS_TOKEN)
+            answer_seqs = [Seq(answer, is_graph=False) for answer in answers]
+            all_instances.append((
+                graph_seq,
+                out_seq_seq,
+                answer_seqs, # heterogenous list
+            ))
+            all_seq_lens.append(len(out_seq_seq.words))
+    return all_instances, all_seq_lens
+
+def get_datasets(logger: Logger) -> Datasets:
+    train_set, train_seq_lens = _get_dataset(config.TRAINING_DATASET)
+    dev_set, dev_seq_lens = _get_dataset(config.DEVELOP_DATASET)
+    test_set, test_seq_lens = _get_dataset(config.TESTING_DATASET)
+    for (name, data, lengths) in [
+        ("training", train_set, train_seq_lens), ("dev", dev_set, dev_seq_lens), ("test", test_set, test_seq_lens)
+    ]:
+        logger.log(f"# of {name} examples: {len(data)}", logger.run_log, echo=True)
+        logger.log(f"max {name} seq length: {np.max(lengths)}", logger.run_log, echo=True)
+        logger.log(f"min {name} seq length: {np.min(lengths)}", logger.run_log, echo=True)
+        logger.log(f"mean {name} seq length: {np.mean(lengths)}", logger.run_log, echo=True)
     return {
-        "g_node_ids": {},
-        "g_node_name_words": [],
-        "g_node_type_words": [],
-        "g_node_type_ids": [],
-        "g_node_ans_match": [],
-        "g_edge_type_words": [],
-        "g_edge_type_ids": [],
-        "g_adj": defaultdict(dict),
-        "num_virtual_nodes": 0,
-        "num_virtual_edges": 0,
+        "train": train_set,
+        "dev": dev_set,
+        "test": test_set,
     }
 
-# WQ
+# WQ SAMPLE RAW ENTRY
 # {
 #     'g_node_ids': {
 #         '/m/06mt91': 0,
@@ -231,7 +282,7 @@ def _blank_graph() -> PreparedGraph:
 #     }
 # }
 
-# PQ
+# PQ SAMPLE RAW ENTRY
 # {
 #     "answers": ["honolulu"],
 #     "outSeq": "the place of death of kalama 's husband ?",
