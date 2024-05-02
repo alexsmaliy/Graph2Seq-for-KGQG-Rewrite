@@ -1,0 +1,6 @@
+USE_CUDA = True
+
+USE_LOGGING = True
+LOG_DIR = "log"
+
+RANDOM_SEED = 42
