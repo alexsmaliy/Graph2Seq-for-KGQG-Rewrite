@@ -22,7 +22,7 @@ class Logger(object):
 
         self._log_config()
 
-    def log(self, stuff, fpath, echo=False, as_json=False):
+    def log(self, stuff, fpath, echo=True, as_json=False):
         if as_json:
             stuff = json.dumps(stuff, indent=3, ensure_ascii=False)
         if echo:
