@@ -1,4 +1,11 @@
+MODEL = "graph2seq"
+
+TRAINING_DATASET = ""
+DEVELOP_DATASET = ""
+TESTING_DATASET = ""
+
 USE_CUDA = True
+CUDA_DEVICE_ID = 1
 
 USE_LOGGING = True
 LOG_DIR = "log"
