@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict, OrderedDict
-from typing import Literal, Optional, TypedDict, Union
+from typing import cast, Literal, Optional, TypedDict, Union
 
 from nltk.tokenize import wordpunct_tokenize
 import numpy as np
@@ -40,7 +40,22 @@ class PreparedGraph(TypedDict):
     num_virtual_nodes: int
     num_virtual_edges: int
 
-DataInstance = tuple["Seq", "Seq", list["Seq"]]
+# original authors like to reassign different data-shapes to the same field
+# here's a type to capture that difference
+class SeqGraph(TypedDict):
+    g_node_ids: dict[str, int]
+    g_node_name_words: list[list[str]] # different from PreParedGraph
+    g_node_type_words: list[list[str]] # different from PreParedGraph
+    g_node_type_ids: list[str]
+    g_node_ans_match: list[Indicator]
+    g_edge_type_words: list[list[str]] # different from PreParedGraph
+    g_edge_type_ids: list[str]
+    # map from src node index to dest node idx
+    g_adj: defaultdict[int, dict[int, int]]
+    num_virtual_nodes: int
+    num_virtual_edges: int
+
+DataInstance = tuple["SeqWithGraph", "SeqWithStr", list["SeqWithStr"]]
 Dataset = list[DataInstance]
 
 class Datasets(TypedDict):
@@ -51,25 +66,57 @@ class Datasets(TypedDict):
 ##############
 # OPERATIONS #
 ##############
-def _tokenize_list(lst: list[str]):
+def _tokenize_list(lst: list[str]) -> list[list[str]]:
     return [wordpunct_tokenize(w.lower()) for w in lst]
 
-class Seq(object):
-    def __init__(self, data: PreparedGraph | str, /, is_graph=False, end_sym=None):
-        self.graph = data if is_graph else None
-        if is_graph:
-            self.graph["g_node_name_words"] = _tokenize_list(self.graph['g_node_name_words'])
-            self.graph["g_node_type_words"] = _tokenize_list(self.graph["g_node_type_words"])
-            self.graph["g_edge_type_words"] = _tokenize_list(self.graph["g_edge_type_words"])
-        else:
-            lower = data.lower()
-            toks = wordpunct_tokenize(lower)
-            self.src = " ".join(toks)
-            self.tokText = lower
-            self.words = toks
-            if end_sym is not None:
-                self.tokText = f"{self.tokText} {end_sym}"
-                self.words.append(end_sym)
+class SeqWithGraph(object):
+    def __init__(self, data: PreparedGraph):
+        graph = {
+                **data,
+                "g_node_name_words": _tokenize_list(data['g_node_name_words']),
+                "g_node_type_words": _tokenize_list(data["g_node_type_words"]),
+                "g_edge_type_words": _tokenize_list(data["g_edge_type_words"]),
+            }
+        graph = cast(SeqGraph, graph)
+        self.graph = graph
+
+class SeqWithStr(object):
+    def __init__(self, data: str, /, end_sym=None):
+        self.graph = None
+        data = cast(str, data)
+        lower = data.lower()
+        toks = wordpunct_tokenize(lower)
+        self.src = " ".join(toks)
+        self.tokText = lower
+        self.words = toks
+        if end_sym is not None:
+            self.tokText = f"{self.tokText} {end_sym}"
+            self.words.append(end_sym)
+
+
+# class Seq(object):
+#     def __init__(self, data: PreparedGraph | str, /, is_graph=False, end_sym=None):
+#         if is_graph:
+#             data = cast(PreparedGraph, data)
+#             graph = {
+#                 **data,
+#                 "g_node_name_words": _tokenize_list(data['g_node_name_words']),
+#                 "g_node_type_words": _tokenize_list(data["g_node_type_words"]),
+#                 "g_edge_type_words": _tokenize_list(data["g_edge_type_words"]),
+#             }
+#             graph = cast(SeqGraph, graph)
+#             self.graph = graph
+#         else:
+#             self.graph = None
+#             data = cast(str, data)
+#             lower = data.lower()
+#             toks = wordpunct_tokenize(lower)
+#             self.src = " ".join(toks)
+#             self.tokText = lower
+#             self.words = toks
+#             if end_sym is not None:
+#                 self.tokText = f"{self.tokText} {end_sym}"
+#                 self.words.append(end_sym)
 
 def _blank_graph() -> PreparedGraph:
     return {
@@ -167,9 +214,9 @@ def _get_dataset(data_fpath: str) -> tuple[Dataset, list[int]]:
     with open(data_fpath, "r") as data_file:
         for line in data_file:
             graph, out_seq, answers = _process_line(line)
-            graph_seq = Seq(graph, is_graph=True)
-            out_seq_seq = Seq(out_seq, is_graph=False, end_sym=EOS_TOKEN)
-            answer_seqs = [Seq(answer, is_graph=False) for answer in answers]
+            graph_seq = SeqWithGraph(graph)
+            out_seq_seq = SeqWithStr(out_seq, end_sym=EOS_TOKEN)
+            answer_seqs = [SeqWithStr(answer) for answer in answers]
             all_instances.append((
                 graph_seq,
                 out_seq_seq,

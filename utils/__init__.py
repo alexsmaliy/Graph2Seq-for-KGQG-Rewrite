@@ -1,4 +1,4 @@
-from .loading import Dataset, Seq, get_datasets
+from .loading import Dataset, SeqWithGraph, SeqWithStr, get_datasets
 from .logging import Logger
 from .metrics import AverageMeter
 from .processing import *
