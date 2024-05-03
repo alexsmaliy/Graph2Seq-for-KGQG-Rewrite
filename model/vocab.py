@@ -1,5 +1,6 @@
 from collections import Counter
 from collections.abc import Iterable
+import numpy as np
 import os
 import pickle
 from typing import TypedDict
@@ -54,6 +55,8 @@ def _count_stats(dataset: Dataset) -> VocabStats:
     }
 
 class Vocabulary(object):
+    embedding_dtype = np.float32
+    embedding_scale = 0.08
     def __init__(self, logger: Logger):
         self.pad_ind = 0
         self.sos_ind = 1
@@ -101,6 +104,43 @@ class Vocabulary(object):
         self.word2index = word2index
         self.word2count = word2count
 
+    def init_embeddings(self, dim: int):
+        emb = np.random.uniform(
+            low=-self.embedding_scale,
+            high=self.embedding_scale,
+            size=(len(self.index2word), dim)
+        )
+        emb = np.array(emb, dtype=Vocabulary.embedding_dtype)
+        emb[self.pad_ind, :] = np.zeros(dim)
+        self.embeddings = emb
+
+    def load_embeddings(self, fpath: str):
+        self.logger.log(f"Loading GloVe embeddings from {fpath}")
+        seen_indexes = set()
+        vocab_size = len(self.index2word)
+        n = 0
+        with open(fpath, "rb") as f:
+            for line in f:
+                n += 1
+                line = line.split()
+                word = line[0].decode("utf-8")
+                word_index = self.word2index.get(word.lower(), None)
+                if word_index is None or word_index in seen_indexes:
+                    continue
+                embedding = np.array(line[1:], dtype=Vocabulary.embedding_dtype)
+                if self.embeddings is None:
+                    embedding_dim = len(embedding)
+                    self.init_embeddings(embedding_dim)
+                self.embeddings[word_index, :] = embedding
+                seen_indexes.add(word_index)
+        self.logger.log({
+            "embedding_words": n,
+            "embedding_dim": self.embeddings.shape[1],
+            "vocab_size": vocab_size,
+            "matched_vocab": len(seen_indexes),
+            "matched_ratio": round(len(seen_indexes) / vocab_size, 3),
+        }, as_json=True)
+
 class VocabModel(object):
     def __init__(self, dataset: Dataset, logger: Logger):
         logger.log("Building vocab model!")
@@ -112,15 +152,22 @@ class VocabModel(object):
 
         word_vocab = Vocabulary(logger)
         word_vocab.build(counts["word_count"])
+        if config.PRETRAINED_WORD_EMBEDDINGS:
+            logger.log("Loading pretrained word embeddings.")
+            word_vocab.load_embeddings(config.PRETRAINED_WORD_EMBEDDINGS)
+        else:
+            logger.log("Using randomized word embeddings.")
+            word_vocab.init_embeddings(config.WORD_EMBEDDINGS_DIM)
 
-        node_vocab = Vocabulary(logger)
-
+        node_id_vocab = Vocabulary(logger)
+        node_id_vocab.build(counts["node_id_count"])
         node_type_vocab = Vocabulary(logger)
-
+        node_type_vocab.build(counts["node_type_count"])
         edge_type_vocab = Vocabulary(logger)
+        edge_type_vocab.build(counts["edge_type_count"])
 
         self.word_vocab = word_vocab
-        self.node_vocab = node_vocab
+        self.node_id_vocab = node_id_vocab
         self.node_type_vocab = node_type_vocab
         self.edge_type_vocab = edge_type_vocab
 
