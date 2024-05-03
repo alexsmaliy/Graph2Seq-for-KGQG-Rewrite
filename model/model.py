@@ -11,3 +11,8 @@ class Model(object):
         self.module = Graph2SeqModule
         logger.log(f"Running {self.module.__name__}")
         self.vocab_model = load_or_init(train_data, logger)
+        self.vocab_model.node_id_vocab = None
+        self.vocab_model.node_type_id_vocab = None
+        self.vocab_model.edge_type_id_vocab = None
+        assert train_data is not None
+        # self._init_network() # TODO

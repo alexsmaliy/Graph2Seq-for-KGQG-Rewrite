@@ -73,8 +73,9 @@ class Vocabulary(object):
         vocab_size = config.MAX_VOCAB_SIZE
         min_word_freq = config.MIN_WORD_FREQ
         self.word2count = count
-        self._add_words(count.keys())
-        self._prune(vocab_size, min_word_freq)
+        if len(count.keys()) > 0:
+            self._add_words(count.keys())
+            self._prune(vocab_size, min_word_freq)
 
     def _add_words(self, words: Iterable[str]):
         for word in words:
@@ -86,6 +87,7 @@ class Vocabulary(object):
 
     def _prune(self, max_vocab_size: int, min_word_freq: int):
         """keep max N most frequent ones, then remove all words below min_word_freq"""
+        self.logger.log(f"Pruning loaded vocab for max size {max_vocab_size} and min freq {min_word_freq}: {len(self.index2word)} items before")
         word_counts = self.word2count.items()
         word_counts = sorted(word_counts, key=lambda tup: tup[1], reverse=True)[:max_vocab_size]
         if min_word_freq > 1:
@@ -103,6 +105,7 @@ class Vocabulary(object):
         self.index2word = index2word
         self.word2index = word2index
         self.word2count = word2count
+        self.logger.log(f"Pruning loaded vocab: {len(self.index2word)} items after")
 
     def init_embeddings(self, dim: int):
         emb = np.random.uniform(
@@ -145,12 +148,9 @@ class VocabModel(object):
     def __init__(self, dataset: Dataset, logger: Logger):
         logger.log("Building vocab model!")
         counts = _count_stats(dataset)
-        logger.log(f"Number of words: {len(counts['word_count'])}")
-        logger.log(f"Number of node IDs: {len(counts['node_id_count'])}")
-        logger.log(f"Number of node types: {len(counts['node_type_count'])}")
-        logger.log(f"Number of edge types: {len(counts['edge_type_count'])}")
 
         word_vocab = Vocabulary(logger)
+        logger.log(f"Building vocabulary of words: input has {len(counts['word_count'])}")
         word_vocab.build(counts["word_count"])
         if config.PRETRAINED_WORD_EMBEDDINGS:
             logger.log("Loading pretrained word embeddings.")
@@ -160,10 +160,15 @@ class VocabModel(object):
             word_vocab.init_embeddings(config.WORD_EMBEDDINGS_DIM)
 
         node_id_vocab = Vocabulary(logger)
+        logger.log(f"Building vocabulary of node IDs: input has {len(counts['node_id_count'])}")
         node_id_vocab.build(counts["node_id_count"])
+
         node_type_vocab = Vocabulary(logger)
+        logger.log(f"Building vocabulary of node types: input has {len(counts['node_type_count'])}")
         node_type_vocab.build(counts["node_type_count"])
+
         edge_type_vocab = Vocabulary(logger)
+        logger.log(f"Building vocabulary of edge types: input has {len(counts['edge_type_count'])}")
         edge_type_vocab.build(counts["edge_type_count"])
 
         self.word_vocab = word_vocab
@@ -173,7 +178,7 @@ class VocabModel(object):
 
 def load_or_init(dataset: Dataset, logger: Logger):
     fpath = config.VOCAB_MODEL_PATH
-    if os.path.exists(fpath) and False: # TODO remove
+    if os.path.exists(fpath):
         logger.log(f"Loading vocab model from: {fpath}")
         with open(fpath, "rb") as f:
             vocab = pickle.load(f)
