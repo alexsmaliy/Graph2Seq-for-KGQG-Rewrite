@@ -58,7 +58,7 @@ class Vocabulary(object):
     embedding_dtype = np.float32
     embedding_scale = 0.08
     def __init__(self, logger: Logger):
-        self.pad_ind = 0
+        self.pad_ind = 0 # the embedding vector at this index doesn't get updated in pytorch
         self.sos_ind = 1
         self.eos_ind = 2
         self.unk_ind = 3
@@ -67,15 +67,17 @@ class Vocabulary(object):
         self.word2index: dict[str, int] = map_to_index(self.reserved)
         self.word2count: Counter[str] = Counter()
         self.embeddings = None
+        self.vocab_size = 0
+        self.embed_dim = 0
         self.logger = logger
 
     def build(self, count: Counter):
-        vocab_size = config.MAX_VOCAB_SIZE
+        max_vocab_size = config.MAX_VOCAB_SIZE
         min_word_freq = config.MIN_WORD_FREQ
         self.word2count = count
         if len(count.keys()) > 0:
             self._add_words(count.keys())
-            self._prune(vocab_size, min_word_freq)
+            self._prune(max_vocab_size, min_word_freq)
 
     def _add_words(self, words: Iterable[str]):
         for word in words:
@@ -105,6 +107,7 @@ class Vocabulary(object):
         self.index2word = index2word
         self.word2index = word2index
         self.word2count = word2count
+        self.vocab_size = len(self.index2word)
         self.logger.log(f"Pruning loaded vocab: {len(self.index2word)} items after")
 
     def init_embeddings(self, dim: int):
@@ -120,7 +123,6 @@ class Vocabulary(object):
     def load_embeddings(self, fpath: str):
         self.logger.log(f"Loading GloVe embeddings from {fpath}")
         seen_indexes = set()
-        vocab_size = len(self.index2word)
         n = 0
         with open(fpath, "rb") as f:
             for line in f:
@@ -136,12 +138,13 @@ class Vocabulary(object):
                     self.init_embeddings(embedding_dim)
                 self.embeddings[word_index, :] = embedding
                 seen_indexes.add(word_index)
+        self.embed_dim = self.embeddings.shape[1]
         self.logger.log({
             "embedding_words": n,
-            "embedding_dim": self.embeddings.shape[1],
-            "vocab_size": vocab_size,
+            "embedding_dim": self.embed_dim,
+            "vocab_size": self.vocab_size,
             "matched_vocab": len(seen_indexes),
-            "matched_ratio": round(len(seen_indexes) / vocab_size, 3),
+            "matched_ratio": round(len(seen_indexes) / self.vocab_size, 3),
         }, as_json=True)
 
 class VocabModel(object):

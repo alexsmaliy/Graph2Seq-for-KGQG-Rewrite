@@ -1,0 +1,135 @@
+# Data                                                                # Data
+dataset_name: 'mhqg-pq'                                             | dataset_name: 'mhqg-wq'
+trainset: '../data/mhqg-pq/train.json'                              | trainset: '../data/mhqg-wq/train.json'
+devset: '../data/mhqg-pq/dev.json'                                  | devset: '../data/mhqg-wq/dev.json'
+testset: '../data/mhqg-pq/test.json'                                | testset: '../data/mhqg-wq/test.json'
+pretrained_word_embed_file: '../data/glove.840B.300d.txt'             pretrained_word_embed_file: '../data/glove.840B.300d.txt'
+wmd_emb_file: null                                                    wmd_emb_file: null
+saved_vocab_file: '../data/mhqg-pq/vocab_model_min3'                | saved_vocab_file: '../data/mhqg-wq/vocab_model_min3'
+pretrained: null                                                      pretrained: null
+                                                                      
+# Output                                                              # Output
+out_dir: '../out/mhqg-pq/graph2seq_ae'                              | out_dir: '../out/mhqg-wq/graph2seq_ae'
+                                                                      
+                                                                      
+# Preprocessing                                                       # Preprocessing
+top_word_vocab: 20000                                                 top_word_vocab: 20000
+min_word_freq: 3                                                      min_word_freq: 3
+max_dec_steps: 26 # 26! Including the EOS symbol                    | max_dec_steps: 37 # 37! Including the EOS symbol
+                                                                      
+                                                                      
+# Model architecture                                                  # Model architecture
+model_name: 'graph2seq'                                               model_name: 'graph2seq'
+                                                                      
+                                                                      
+# Embedding                                                           # Embedding
+word_embed_dim: 300                                                   word_embed_dim: 300
+fix_word_embed: True                                                  fix_word_embed: True
+f_ans: False                                                          f_ans: False
+dan_type: 'word'                                                    < 
+f_ans_match: True                                                     f_ans_match: True
+f_ans_pool: False                                                     f_ans_pool: False
+f_node_type: False                                                    f_node_type: False
+kg_emb: False                                                         kg_emb: False
+entity_emb_dim: 50                                                    entity_emb_dim: 50
+entity_type_emb_dim: 50                                               entity_type_emb_dim: 50
+relation_emb_dim: 50                                                  relation_emb_dim: 50
+ans_match_emb_dim: 24 # 24!                                         | ans_match_emb_dim: 32 # 32!
+                                                                      
+                                                                      
+hidden_size: 300                                                      hidden_size: 300
+rnn_type: 'lstm'                                                      rnn_type: 'lstm'
+dec_hidden_size: 300  # if set, a matrix will transform enc state i   dec_hidden_size: 300  # if set, a matrix will transform enc state i
+enc_bidi: True                                                        enc_bidi: True
+num_enc_rnn_layers: 1                                                 num_enc_rnn_layers: 1
+rnn_size: 300                                                         rnn_size: 300
+                                                                      
+                                                                      
+# Attention & copy                                                    # Attention & copy
+enc_attn: True  # decoder has attention over encoder states?          enc_attn: True  # decoder has attention over encoder states?
+dec_attn: False  # decoder has attention over previous decoder stat   dec_attn: False  # decoder has attention over previous decoder stat
+pointer: True  # use pointer network (copy mechanism) in addition t   pointer: True  # use pointer network (copy mechanism) in addition t
+out_embed_size: null  # if set, use an additional layer before deco   out_embed_size: null  # if set, use an additional layer before deco
+tie_embed: True  # tie the decoder output layer to the input embedd   tie_embed: True  # tie the decoder output layer to the input embedd
+                                                                      
+# Coverage (to turn on/off, change both `enc_attn_cover` and `cover   # Coverage (to turn on/off, change both `enc_attn_cover` and `cover
+enc_attn_cover: False # False! # provide coverage as input when com   enc_attn_cover: False  # provide coverage as input when computing e
+cover_func: 'sum'  # how to aggregate previous attention distributi   cover_func: 'sum'  # how to aggregate previous attention distributi
+cover_loss: 0 # 0! add coverage loss if > 0; weight of coverage los | cover_loss: 0 # 0.2! add coverage loss if > 0; weight of coverage l
+show_cover_loss: True  # include coverage loss in the loss shown in   show_cover_loss: True  # include coverage loss in the loss shown in
+                                                                      
+# Regularization                                                      # Regularization
+word_dropout: 0.4 # 0.4!                                              word_dropout: 0.4 # 0.4!
+dropoutagg: 0 # dropout for regularization, used after each aggrega   dropoutagg: 0 # dropout for regularization, used after each aggrega
+enc_rnn_dropout: 0.3 # 0.3!                                           enc_rnn_dropout: 0.3 # 0.3!
+# dec_rnn_dropout: 0.3                                                # dec_rnn_dropout: 0.3
+dec_in_dropout: 0                                                     dec_in_dropout: 0
+dec_out_dropout: 0                                                    dec_out_dropout: 0
+eps_label_smoothing: 0.2 # 0.2!                                       eps_label_smoothing: 0.2 # 0.2!
+                                                                      
+                                                                      
+# Graph neural networks                                               # Graph neural networks
+graph_type: 'static' # 'static'                                       graph_type: 'static' # 'static'
+graph_direction: 'all' # 'all', 'forward', 'backward'                 graph_direction: 'all' # 'all', 'forward', 'backward'
+message_function: 'no_edge' # 'edge_pair', 'no_edge'                  message_function: 'no_edge' # 'edge_pair', 'no_edge'
+graph_hops: 4 # 4!                                                    graph_hops: 4 # 4!!
+                                                                      
+                                                                      
+# # Bert configure                                                    # # Bert configure
+use_bert: False                                                       use_bert: False
+finetune_bert: False                                                  finetune_bert: False
+use_bert_weight: True                                                 use_bert_weight: True
+use_bert_gamma: False                                                 use_bert_gamma: False
+bert_model: 'bert-large-uncased'                                      bert_model: 'bert-large-uncased'
+bert_dropout: 0.4                                                     bert_dropout: 0.4
+bert_dim: 1024                                                        bert_dim: 1024
+bert_max_seq_len: 500                                                 bert_max_seq_len: 500
+bert_doc_stride: 250                                                  bert_doc_stride: 250
+bert_layer_indexes: '0,24'                                          | bert_layer_indexes: '0;24'
+                                                                      
+                                                                      
+# Training                                                            # Training
+optimizer: 'adam'                                                     optimizer: 'adam'
+learning_rate: 0.001 # 0.001!                                         learning_rate: 0.001 # 0.001!
+grad_clipping: 10 # 10!                                               grad_clipping: 10 # 10!
+grad_accumulated_steps: 1                                             grad_accumulated_steps: 1
+eary_stop_metric: 'Bleu_4'                                            eary_stop_metric: 'Bleu_4'
+                                                                      
+random_seed: 1234                                                     random_seed: 1234
+shuffle: True # Whether to shuffle the examples during training       shuffle: True # Whether to shuffle the examples during training
+max_epochs: 100                                                       max_epochs: 100
+batch_size: 30 # 30!                                                  batch_size: 30 # 30!
+patience: 10                                                          patience: 10
+verbose: 1000 # Print every X batches                                 verbose: 1000 # Print every X batches
+                                                                      
+forcing_ratio: 0.8 # 0.8! # initial percentage of using teacher for   forcing_ratio: 0.8 # 0.8!! # initial percentage of using teacher fo
+partial_forcing: True  # in a seq, can some steps be teacher forced   partial_forcing: True  # in a seq, can some steps be teacher forced
+forcing_decay_type: 'exp'  # linear, exp, sigmoid, or None            forcing_decay_type: 'exp'  # linear, exp, sigmoid, or None
+forcing_decay: 0.9999                                                 forcing_decay: 0.9999
+sample: False  # are non-teacher forced inputs based on sampling or   sample: False  # are non-teacher forced inputs based on sampling or
+# note: enabling reinforcement learning can significantly slow down   # note: enabling reinforcement learning can significantly slow down
+rl_ratio: 0  # use mixed objective if > 0; ratio of RL in the loss    rl_ratio: 0  # use mixed objective if > 0; ratio of RL in the loss 
+rl_ratio_power: 1  #0.7 # increase rl_ratio by **= rl_ratio_power a   rl_ratio_power: 1  #0.7 # increase rl_ratio by **= rl_ratio_power a
+rl_start_epoch: 1  # start RL at which epoch (later start can ensur   rl_start_epoch: 1  # start RL at which epoch (later start can ensur
+max_rl_ratio: 0.99                                                    max_rl_ratio: 0.99
+rl_reward_metric: 'Bleu_4'                                            rl_reward_metric: 'Bleu_4'
+rl_wmd_ratio: 0                                                       rl_wmd_ratio: 0
+max_wmd_reward: 2                                                   | max_wmd_reward: 3
+                                                                      
+                                                                      
+# Testing                                                             # Testing
+out_len_in_words: False # Only for beam search                        out_len_in_words: False # Only for beam search
+out_predictions: True # Whether to output predictions                 out_predictions: True # Whether to output predictions
+save_params: True # Whether to save params                            save_params: True # Whether to save params
+logging: True # Turn it off for Codalab                               logging: True # Turn it off for Codalab
+                                                                      
+# Beam search                                                         # Beam search
+beam_size: 5 # 5!                                                     beam_size: 5
+min_out_len: 6 # Only for beam search                               | min_out_len: 4 # Only for beam search
+max_out_len: 25 # Only for beam search                              | max_out_len: 36 # Only for beam search
+block_ngram_repeat: 0 # Block repetition of ngrams during decoding.   block_ngram_repeat: 0 # Block repetition of ngrams during decoding.
+                                                                      
+                                                                      
+# Device                                                              # Device
+no_cuda: False                                                        no_cuda: False
+cuda_id: -1                                                           cuda_id: -1
