@@ -1,3 +1,4 @@
+from .decoder import RNNDecoder
 from .encoder import EncoderRNN
 from .graph2seq import Graph2SeqModule
 from .manager import ModelManager
