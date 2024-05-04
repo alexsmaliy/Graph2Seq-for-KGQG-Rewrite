@@ -1,9 +1,7 @@
-from typing import Literal
-
 import torch
 import torch.nn as nn
 
-from utils import Logger
+from utils import dropout, Logger
 
 def _send_to_device(tensor: torch.Tensor, device: torch.device):
     tensor.to(device)
@@ -35,13 +33,13 @@ class EncoderRNN(nn.Module):
         self.model = nn.LSTM(
             self.input_size, self.hidden_size, self.num_layers,
             batch_first=True, bidirectional=bidirectional,
-            # device = device # why not?
+            # device = device #TODO try it?
         )
 
     def forward(self, x: torch.Tensor, xlen: torch.Tensor):
         """
-            x: [batch_size * max_length * emb_dim]
-            x_len: [batch_size]
+            x is a 3-tensor of [batch_size * max_length * emb_dim]
+            xlen is a 1-tensor of [batch_size]
         """
         print("Entered LSTM forward pass!") # TODO remove
         sorted_xlen, indexes = torch.sort(xlen, dim=0, descending=True) # sort by batch size
@@ -58,21 +56,21 @@ class EncoderRNN(nn.Module):
         )
 
         packed_h, (packed_h_t, packed_c_t) = self.model(x, (h_0, c_0))
-        packed_h_t = torch.cat((packed_h_t[-1], packed_h_t[-2]), 1)
-        packed_c_t = torch.cat((packed_c_t[-1], packed_c_t[-2]), 1)
+        packed_h_t: torch.Tensor = torch.cat((packed_h_t[-1], packed_h_t[-2]), 1)
+        packed_c_t: torch.Tensor = torch.cat((packed_c_t[-1], packed_c_t[-2]), 1)
 
         _, inverse_indexes = torch.sort(indexes, 0)
 
         hh, _ = nn.utils.rnn.pad_packed_sequence(packed_h, batch_first=True)
-        hh_inv = hh[inverse_indexes]
+        hh_inv: torch.Tensor = hh[inverse_indexes]
         hh_inv = dropout(hh_inv, self.rnn_dropout, shared_axes=[-2], training=self.training)
         hh_inv = hh_inv.transpose(0, 1) # [max_length, batch_size, emb_dim]
 
-        packed_h_t_inv = packed_h_t[inverse_indexes]
+        packed_h_t_inv: torch.Tensor = packed_h_t[inverse_indexes]
         packed_h_t_inv = dropout(packed_h_t_inv, self.rnn_dropout, training=self.training)
         packed_h_t_inv = packed_h_t_inv.unsqueeze(0) # [1, batch_size, emb_dim]
 
-        packed_c_t_inv = packed_c_t[inverse_indexes]
+        packed_c_t_inv: torch.Tensor = packed_c_t[inverse_indexes]
         packed_c_t_inv = dropout(packed_c_t_inv, self.rnn_dropout, training=self.training)
         packed_c_t_inv = packed_c_t_inv.unsqueeze(0) # [1, batch_size, emb_dim]
         rnn_state_t = (packed_h_t_inv, packed_c_t_inv)
