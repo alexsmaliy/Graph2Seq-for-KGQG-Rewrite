@@ -44,18 +44,18 @@ class Graph2SeqModule(nn.Module):
             enc_hidden_size,
             bidirectional=True,
             num_layers=1,
-            rnn_type='lstm',
             rnn_dropout=enc_rnn_dropout,
             device=self.device,
+            logger=self.logger,
         )
         self.edge_type_word_encoder = EncoderRNN(
             word_embed_dim,
             enc_hidden_size,
             bidirectional=True,
             num_layers=1,
-            rnn_type='lstm',
             rnn_dropout=enc_rnn_dropout,
             device=self.device,
+            logger=self.logger,
         )
         self.graph_encoder = GraphNN() #TODO
         self.decoder = RNNDecoder() #TODO
