@@ -160,7 +160,7 @@ class VocabModel(object):
             word_vocab.load_embeddings(config.PRETRAINED_WORD_EMBEDDINGS)
         else:
             logger.log("Using randomized word embeddings.")
-            word_vocab.init_embeddings(config.WORD_EMBEDDINGS_DIM)
+            word_vocab.init_embeddings(config.WORD_EMBED_DIM)
 
         node_id_vocab = Vocabulary(logger)
         logger.log(f"Building vocabulary of node IDs: input has {len(counts['node_id_count'])}")
