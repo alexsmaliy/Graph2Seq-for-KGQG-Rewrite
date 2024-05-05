@@ -10,7 +10,8 @@ class DecoderRNN(nn.Module):
     def __init__(self,
         vocab_size: int,
         embed_size: int,
-        hidden_size: int, /,
+        hidden_size: int,
+        *,
         tied_embedding: nn.Embedding,
         device: torch.device,
         logger: Logger,
@@ -20,7 +21,7 @@ class DecoderRNN(nn.Module):
         self.dec_attn = False
         self.device = device
         self.enc_attn = True
-        self.enc_attn_cover = True # ???
+        self.enc_attn_cover = False
         self.enc_hidden_size = config.GRAPH_HIDDEN_SIZE
         self.hidden_size = hidden_size
         self.combined_size = self.hidden_size

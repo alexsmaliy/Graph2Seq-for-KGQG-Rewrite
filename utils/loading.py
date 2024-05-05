@@ -81,7 +81,7 @@ class SeqWithGraph(object):
         self.graph = graph
 
 class SeqWithStr(object):
-    def __init__(self, data: str, /, end_sym=None):
+    def __init__(self, data: str, *, end_sym=None):
         self.graph = None
         data = cast(str, data)
         lower = data.lower()

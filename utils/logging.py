@@ -20,7 +20,7 @@ class Logger(object):
         os.makedirs(Logger.log_dir, exist_ok=True)
         self._record_config()
 
-    def log(self, stuff, fpath=run_log, /, echo=True, as_json=False):
+    def log(self, stuff, fpath=run_log, *, echo=True, as_json=False):
         if as_json:
             stuff = json.dumps(stuff, indent=3, ensure_ascii=False)
         if echo:
