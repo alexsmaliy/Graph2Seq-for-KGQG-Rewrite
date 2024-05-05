@@ -1,5 +1,13 @@
+import numpy as np
 import torch
 from torch import nn
+
+def create_mask(x, N, device=None):
+    x = x.data
+    mask = np.zeros((x.size(0), N))
+    for i in range(x.size(0)):
+        mask[i, :x[i]] = 1
+    return send_to_device(torch.Tensor(mask), device)
 
 def dropout(t: torch.Tensor, drop_prob: float, *, shared_axes=None, training=False):
     if shared_axes is None:
