@@ -2,11 +2,12 @@ import torch
 from torch import nn
 
 import config
+import utils
 from .decoder import DecoderRNN
 from .encoder import EncoderRNN
 from .graph_encoder import GraphNN
 from .vocab import Vocabulary
-from utils import Logger
+from utils import Logger, send_to_device, UNK_TOKEN
 
 class Graph2SeqModule(nn.Module):
     def __init__(self, word_embedding: nn.Embedding, word_vocab: Vocabulary, logger: Logger, device: torch.device):
@@ -70,3 +71,40 @@ class Graph2SeqModule(nn.Module):
             logger=self.logger,
         )
 
+    def filter_out_of_vocab(self, t, ext_vocab_size):
+        """replace any OOV index in `tensor` with UNK token"""
+        if ext_vocab_size and ext_vocab_size > self.vocab_size:
+            result = t.clone()
+            result[t >= self.vocab_size] = UNK_TOKEN
+            return result
+        return t
+
+    def gather(self, input_tensor1, input_tensor2, num1, num2, max_num_graph_elements):
+        input_tensor = torch.cat([input_tensor1, input_tensor2], 1)
+        max_num1 = input_tensor1.size(1)
+        index_tensor = []
+
+        for i in range(input_tensor.size(0)):
+            selected_index = list(
+                range(num1[i].item())
+            ) + list(
+                range(max_num1, max_num1 + num2[i].item())
+            )
+            if len(selected_index) < max_num_graph_elements:
+                selected_index += [
+                    max_num_graph_elements - 1 for _ in range(max_num_graph_elements - len(selected_index))
+                ]
+            index_tensor.append(selected_index)
+
+        index_tensor = send_to_device(
+            torch.LongTensor(index_tensor).unsqueeze(-1).expand(-1, -1, input_tensor.size(-1)),
+            self.device,
+        )
+        return torch.gather(input_tensor, 1, index_tensor)
+
+    def get_coverage_vector(self, enc_attn_weights):
+        """combine the past attention weights into one vector"""
+        return torch.sum(torch.cat(enc_attn_weights), dim=0)
+
+    def forward(self):
+        pass
