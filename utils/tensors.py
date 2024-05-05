@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-def dropout(t: torch.Tensor, drop_prob: float, /, shared_axes=None, training = False):
+def dropout(t: torch.Tensor, drop_prob: float, *, shared_axes=None, training=False):
     if shared_axes is None:
         shared_axes = []
     if drop_prob == 0.0 or not training:

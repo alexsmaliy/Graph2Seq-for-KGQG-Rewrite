@@ -58,7 +58,9 @@ class Graph2SeqModule(nn.Module):
             device=self.device,
             logger=self.logger,
         )
+
         self.graph_encoder = GraphNN(self.device, self.logger)
+
         self.decoder = DecoderRNN(
             self.vocab_size,
             config.WORD_EMBED_DIM,
@@ -67,3 +69,4 @@ class Graph2SeqModule(nn.Module):
             device=self.device,
             logger=self.logger,
         )
+
