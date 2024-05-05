@@ -34,7 +34,7 @@ class DecoderRNN(nn.Module):
 
         self.model = nn.LSTM(embed_size, self.hidden_size)
         self.fc_dec_input = nn.Linear(self.enc_hidden_size + embed_size, embed_size)
-        self.enc_attn_fn = AttentionModule(self.hidden_size, 2 * self.hidden_size, self.enc_hidden_size, attn_type='add')
+        self.enc_attn_fn = AttentionModule(self.hidden_size, 2 * self.hidden_size, self.enc_hidden_size)
         self.combined_size += self.enc_hidden_size
 
         cover_weight = torch.Tensor(1, 1, self.hidden_size)
@@ -64,8 +64,8 @@ class DecoderRNN(nn.Module):
         input_mask=None,
         input_node_mask=None,
         encoder_word_idx=None,
-        ext_vocab_size: int=None,
-        log_prob: bool=True,
+        ext_vocab_size=None,
+        log_prob=True,
         prev_enc_context=None,
     ):
         """
