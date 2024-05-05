@@ -57,5 +57,5 @@ class Graph2SeqModule(nn.Module):
             device=self.device,
             logger=self.logger,
         )
-        self.graph_encoder = GraphNN() #TODO
+        self.graph_encoder = GraphNN(self.device, self.logger) #TODO
         self.decoder = RNNDecoder() #TODO

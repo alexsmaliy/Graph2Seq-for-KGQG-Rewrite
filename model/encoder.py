@@ -1,11 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utils import dropout, Logger
-
-def _send_to_device(tensor: torch.Tensor, device: torch.device):
-    tensor.to(device)
-    return tensor
+from utils import dropout, Logger, send_to_device
 
 class EncoderRNN(nn.Module):
     def __init__(
@@ -46,11 +42,11 @@ class EncoderRNN(nn.Module):
         lst = sorted_xlen.data.tolist()
         x = nn.utils.rnn.pack_padded_sequence(x[indexes], lst, batch_first=True)
 
-        h_0 = _send_to_device(
+        h_0 = send_to_device(
             torch.zeros(self.num_directions * self.num_layers, xlen.size(0), self.hidden_size),
             self.device,
         )
-        c_0 = _send_to_device(
+        c_0 = send_to_device(
             torch.zeros(self.num_directions * self.num_layers, xlen.size(0), self.hidden_size),
             self.device
         )

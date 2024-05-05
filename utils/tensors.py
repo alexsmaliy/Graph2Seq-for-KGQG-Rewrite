@@ -16,3 +16,7 @@ def dropout(t: torch.Tensor, drop_prob: float, /, shared_axes=None, training = F
          .expand_as(t)
     )
     return t * mask
+
+def send_to_device(tensor: torch.Tensor, device: torch.device):
+    tensor.to(device)
+    return tensor
