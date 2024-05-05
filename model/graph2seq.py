@@ -2,8 +2,9 @@ import torch
 from torch import nn
 
 import config
-from .decoder import RNNDecoder
-from .encoder import EncoderRNN, GraphNN
+from .decoder import DecoderRNN
+from .encoder import EncoderRNN
+from .graph_encoder import GraphNN
 from .vocab import Vocabulary
 from utils import Logger
 
@@ -57,5 +58,12 @@ class Graph2SeqModule(nn.Module):
             device=self.device,
             logger=self.logger,
         )
-        self.graph_encoder = GraphNN(self.device, self.logger) #TODO
-        self.decoder = RNNDecoder() #TODO
+        self.graph_encoder = GraphNN(self.device, self.logger)
+        self.decoder = DecoderRNN(
+            self.vocab_size,
+            config.WORD_EMBED_DIM,
+            config.DEC_HIDDEN_SIZE,
+            tied_embedding=self.word_embedding,
+            device=self.device,
+            logger=self.logger,
+        )

@@ -72,6 +72,3 @@ class EncoderRNN(nn.Module):
         rnn_state_t = (packed_h_t_inv, packed_c_t_inv)
 
         return hh_inv, rnn_state_t
-
-class GraphNN(object):
-    pass

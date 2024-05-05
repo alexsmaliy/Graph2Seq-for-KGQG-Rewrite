@@ -1,4 +1,4 @@
-from .decoder import RNNDecoder
+from .decoder import DecoderRNN
 from .encoder import EncoderRNN
 from .graph2seq import Graph2SeqModule
 from .graph_encoder import GraphNN
