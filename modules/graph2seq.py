@@ -8,7 +8,7 @@ from .decoder import DecoderRNN
 from .encoder import EncoderRNN
 from .graph_encoder import GraphNN
 from .vocab import Vocabulary
-from utils import create_mask, dropout, EPS, Logger, send_to_device, PAD_TOKEN, SOS_TOKEN, UNK_TOKEN
+from utils import create_mask, dropout, EPS, Logger, send_to_device, PAD_TOKEN, UNK_TOKEN
 
 class Graph2SeqOutput(object):
     def __init__(self,
@@ -88,7 +88,7 @@ class Graph2SeqModule(nn.Module):
         """replace any OOV index in `tensor` with UNK token"""
         if ext_vocab_size and ext_vocab_size > self.vocab_size:
             result = t.clone()
-            result[t >= self.vocab_size] = UNK_TOKEN
+            result[t >= self.vocab_size] = self.word_vocab.unk_ind
             return result
         return t
 
@@ -201,7 +201,7 @@ class Graph2SeqModule(nn.Module):
         enc_context = None
         dec_prob_ptr_tensor = []
 
-        decoder_input = send_to_device(torch.tensor([SOS_TOKEN] * batch_size), self.device)
+        decoder_input = send_to_device(torch.tensor([self.word_vocab.sos_ind] * batch_size), self.device)
 
         # loop to generate tokens
         for di in range(target_length):
@@ -259,7 +259,7 @@ class Graph2SeqModule(nn.Module):
                     self.device,
                 )
                 one_hot = one_hot * (1 - eps) + (1 - one_hot) * eps / (n_class - 1)
-                non_pad_mask = gold_standard.ne(PAD_TOKEN).float()
+                non_pad_mask = gold_standard.ne(self.word_vocab.pad_ind).float()
                 nll_loss = -(one_hot * decoder_output).sum(dim=1)
                 nll_loss = nll_loss * non_pad_mask
 
