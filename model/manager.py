@@ -182,23 +182,31 @@ class ModelManager(object):
                 continue  # When there are no examples in the batch
 
             forcing_ratio = self._set_forcing_ratio(step) if training else 0
-            res = self.model.predict(x_batch, step, forcing_ratio=forcing_ratio, rl_ratio=rl_ratio, update=training, out_predictions=out_predictions, mode=mode)
+            res = self.model.predict(
+                x_batch,
+                step,
+                forcing_ratio=forcing_ratio,
+                rl_ratio=rl_ratio,
+                update=training,
+                out_predictions=out_predictions,
+                mode=mode,
+            )
 
-            loss = res['loss']
-            metrics = res['metrics']
-            self._update_metrics(loss, metrics, x_batch['batch_size'], training=training)
+            loss = res["loss"]
+            metrics = res["metrics"]
+            self._update_metrics(loss, metrics, x_batch["batch_size"], training=training)
 
             if training:
-                self._n_train_examples += x_batch['batch_size']
+                self._n_train_examples += x_batch["batch_size"]
 
             if (verbose > 0) and (step > 0) and (step % verbose == 0):
                 summary_str = f"{self.self_report(step, mode)}\nused_time: {time.time() - start_time:0.2f}s"
                 self.logger.log(summary_str, self.logger.metrics_log, echo=False)
                 self.logger.log(summary_str, echo=True)
 
-            if mode == 'test' and out_predictions:
-                output.extend(res['predictions'])
-                gold.extend(x_batch['target_src'])
+            if mode == "test" and out_predictions:
+                output.extend(res["predictions"])
+                gold.extend(x_batch["target_src"])
         return output, gold
 
     def _set_forcing_ratio(self, step):
