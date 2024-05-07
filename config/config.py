@@ -25,6 +25,7 @@ MAX_DEC_STEPS = 26 # or 37? varies from model to model?
 RNN_SIZE = 300
 WORD_DROPOUT = 0.4
 
+BATCH_SIZE = 30
 LEARNING_RATE = 0.001
 
 USE_CUDA = True
