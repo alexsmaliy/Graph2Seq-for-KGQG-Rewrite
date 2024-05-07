@@ -44,7 +44,7 @@ class ModelManager(object):
         dev_data: Dataset = datasets["dev"]
         test_data: Dataset = datasets["test"]
 
-        datastream = processing.DataStream # TODO
+        datastream = processing.DataStream
         self.vectorize_input = processing.vectorize_input
 
         self.n_train_examples = 0
