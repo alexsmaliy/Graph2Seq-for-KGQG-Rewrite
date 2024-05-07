@@ -4,7 +4,5 @@ from .graph2seq import Graph2SeqModule
 from .graph_encoder import GraphNN
 from .gated_fusion import GatedFusionModule
 from .gated_recurrent_unit import GRUModule
-from .manager import ModelManager
 from .message_passing import GraphMessagePassing
-from .model import Model
-from .vocab import VocabModel
+from .vocab import VocabModel, Vocabulary, VocabStats

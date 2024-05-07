@@ -1,8 +1,10 @@
 from collections import Counter
 from collections.abc import Iterable
+from functools import lru_cache
 import numpy as np
 import os
 import pickle
+import re
 from typing import TypedDict
 
 import config
@@ -57,6 +59,7 @@ def _count_stats(dataset: Dataset) -> VocabStats:
 class Vocabulary(object):
     embedding_dtype = np.float32
     embedding_scale = 0.08
+    word_detector = re.compile("\w")
     def __init__(self, logger: Logger):
         self.pad_ind = 0 # the embedding vector at this index doesn't get updated in pytorch
         self.sos_ind = 1
@@ -146,6 +149,55 @@ class Vocabulary(object):
             "matched_vocab": len(seen_indexes),
             "matched_ratio": round(len(seen_indexes) / self.vocab_size, 3),
         }, as_json=True)
+
+    def __getitem__(self, item):
+        if type(item) is int:
+            return self.index2word[item]
+        return self.word2index.get(item, self.unk_ind)
+
+    def __len__(self):
+        return len(self.index2word)
+
+    @lru_cache(maxsize=None)
+    def is_word(self, token_id: int) -> bool:
+        """Return whether the token at `token_id` is a word; False for punctuations."""
+        if token_id < 4: return False
+        if token_id >= len(self): return True  # OOV is assumed to be words
+        token_str = self.index2word[token_id]
+        if not Vocabulary.word_detector.search(token_str) or token_str == "<P>":
+            return False
+        return True
+
+    def get_vocab_size(self):
+        return len(self.index2word)
+
+    def get_index(self, word):
+        return self.word2index.get(word, self.unk_ind)
+
+    def get_word(self, idx):
+        return self.index2word[idx] if idx < len(self.index2word) else UNK_TOKEN
+
+    def to_word_sequence(self, seq):
+        sentence = []
+        for idx in seq:
+            word = self.get_word(idx)
+            sentence.append(word)
+        return sentence
+
+    def to_index_sequence(self, sentence):
+        sentence = sentence.strip()
+        seq = []
+        for word in re.split("\\s+", sentence):
+            idx = self.get_index(word)
+            seq.append(idx)
+        return seq
+
+    def to_index_sequence_for_list(self, words):
+        seq = []
+        for word in words:
+            idx = self.get_index(word)
+            seq.append(idx)
+        return seq
 
 class VocabModel(object):
     def __init__(self, dataset: Dataset, logger: Logger):

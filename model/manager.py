@@ -44,10 +44,40 @@ class ModelManager(object):
         dev_data: Dataset = datasets["dev"]
         test_data: Dataset = datasets["test"]
 
-        datastream = processing.DataStream
         self.vectorize_input = processing.vectorize_input
-
         self.n_train_examples = 0
         self.model = model.Model(train_data, self.device, self.logger)
         self.model.network = self.model.network.to(self.device)
+
+        if train_data:
+            self.train_loader = processing.DataStream(
+                train_data,
+                self.model.vocab_model.word_vocab,
+                is_shuffle=True, is_loop=True, is_sort=True, ext_vocab=True,
+            )
+            self._n_train_batches = self.train_loader.get_num_batch()
+        else:
+            self.train_loader = None
+
+        if dev_data:
+            self.dev_loader = processing.DataStream(
+                dev_data,
+                self.model.vocab_model.word_vocab,
+                is_shuffle=False, is_loop=True, is_sort=True, ext_vocab=True,
+            )
+            self._n_dev_batches = self.dev_loader.get_num_batch()
+        else:
+            self.dev_loader = None
+
+        if test_data:
+            self.test_loader = processing.DataStream(
+                test_data,
+                self.model.vocab_model.word_vocab,
+                is_shuffle=False, is_loop=False, is_sort=True, batch_size=config.BATCH_SIZE, ext_vocab=True,
+            )
+            self._n_test_batches = self.test_loader.get_num_batch()
+            self._n_test_examples = len(test_data)
+        else:
+            self.test_loader = None
+
         self.is_test = False
