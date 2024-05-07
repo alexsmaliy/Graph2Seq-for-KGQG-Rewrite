@@ -1,3 +1,4 @@
+from .beam import beam_search
 from .decoder import DecoderRNN
 from .encoder import EncoderRNN
 from .graph2seq import Graph2SeqModule

@@ -1,4 +1,4 @@
-from .eval import QGEvalCap
+from .eval import batch_decoded_index2word, eval_decode_batch, evaluate_predictions, QGEvalCap
 from .loading import Dataset, Datasets, SeqWithGraph, SeqWithStr, get_datasets
 from .logging import Logger
 from .metrics import AverageMeter
