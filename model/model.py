@@ -108,3 +108,49 @@ class Model(object):
             padding_idx=self.vocab_model.word_vocab.pad_ind, # the embedding vector at this index doesn't get updated
             _weight=torch.from_numpy(embeddings).float() if embeddings is not None else None,
         )
+
+    def predict(self,
+        batch, step, forcing_ratio=1, rl_ratio=0, update=True, out_predictions=False, mode="train",
+    ):
+        self.network.train(update)
+        if mode == "train":
+            loss, loss_value, metrics = train_batch(
+                batch,
+                self.network,
+                self.vocab_model.word_vocab,
+                self.criterion,
+                forcing_ratio,
+                rl_ratio,
+                self.config,
+                wmd=self.wmd,
+            )
+            loss.backward()
+
+            # clip gradients
+            parameters = [p for p in self.network.parameters() if p.requires_grad]
+            torch.nn.utils.clip_grad_norm_(parameters, config.GRAD_CLIP)
+
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
+        elif mode == "dev":
+            decoded_batch, loss_value, metrics = dev_batch(
+                batch,
+                self.network,
+                self.vocab_model.word_vocab,
+                criterion=None,
+                show_cover_loss=True,
+            )
+
+        elif mode == "test":
+            decoded_batch, metrics = test_batch(batch, self.network, self.vocab_model.word_vocab)
+            loss_value = None
+
+        output = {
+            "loss": loss_value,
+            "metrics": metrics,
+        }
+
+        if mode == "test" and out_predictions:
+            output["predictions"] = decoded_batch
+        return output
