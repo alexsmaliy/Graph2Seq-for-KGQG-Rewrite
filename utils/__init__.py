@@ -1,4 +1,4 @@
-from .loading import Dataset, SeqWithGraph, SeqWithStr, get_datasets
+from .loading import Dataset, Datasets, SeqWithGraph, SeqWithStr, get_datasets
 from .logging import Logger
 from .metrics import AverageMeter
 from .misc import map_to_index
