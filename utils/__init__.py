@@ -1,3 +1,4 @@
+from .eval import QGEvalCap
 from .loading import Dataset, Datasets, SeqWithGraph, SeqWithStr, get_datasets
 from .logging import Logger
 from .metrics import AverageMeter
