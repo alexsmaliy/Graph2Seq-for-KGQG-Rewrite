@@ -2,7 +2,9 @@ import numpy as np
 from scipy.sparse import *
 import torch
 
-from utils import pad_2d_vals_no_size, pad_3d_vals_no_size
+import config
+from modules import Vocabulary
+from utils import Dataset, pad_2d_vals_no_size, pad_3d_vals_no_size
 
 def find_sublist(src_list, a_list):
     indices = []
@@ -35,7 +37,7 @@ def seq2ext_vocab_id(idx_in_batch, seq, word_vocab, oov_dict):
             i += len(key[1])
     return seq_idx
 
-def vectorize_batch_graph(graphs, word_vocab, oov_dict, ext_vocab=False):
+def vectorize_batch_graph(graphs, word_vocab: Vocabulary, oov_dict, ext_vocab=False):
     max_num_graph_nodes = max([g.get('num_virtual_nodes', len(g['g_node_name_words'])) for g in graphs])
     max_num_graph_edges = max([g.get('num_virtual_edges', len(g['g_edge_type_words'])) for g in graphs])
 
@@ -64,7 +66,7 @@ def vectorize_batch_graph(graphs, word_vocab, oov_dict, ext_vocab=False):
                 g_oov_idx.append(oov_idx)
             tmp_node_name_idx = []
             for word in each: # seq level
-                idx = word_vocab.getIndex(word)
+                idx = word_vocab.get_index(word)
                 tmp_node_name_idx.append(idx)
             node_name_idx.append(tmp_node_name_idx)
         batch_node_name_words.append(node_name_idx)
@@ -76,7 +78,7 @@ def vectorize_batch_graph(graphs, word_vocab, oov_dict, ext_vocab=False):
         for each in g['g_node_type_words']: # node level
             tmp_node_type_idx = []
             for word in each: # seq level
-                idx = word_vocab.getIndex(word)
+                idx = word_vocab.get_index(word)
                 tmp_node_type_idx.append(idx)
             node_type_idx.append(tmp_node_type_idx)
         batch_node_type_words.append(node_type_idx)
@@ -87,7 +89,7 @@ def vectorize_batch_graph(graphs, word_vocab, oov_dict, ext_vocab=False):
         for each in g['g_edge_type_words']:
             tmp_edge_type_idx = []
             for word in each: # seq level
-                idx = word_vocab.getIndex(word)
+                idx = word_vocab.get_index(word)
                 tmp_edge_type_idx.append(idx)
             edge_type_idx.append(tmp_edge_type_idx)
         batch_edge_type_words.append(edge_type_idx)
@@ -196,7 +198,7 @@ class OutOfVocabDict(object):
         return index
 
 class Batch(object):
-    def __init__(self, instances, word_vocab, node_vocab, node_type_vocab, edge_type_vocab, ext_vocab=False):
+    def __init__(self, instances, word_vocab: Vocabulary, ext_vocab=False):
         self.instances = instances
         self.batch_size = len(instances)
         self.oov_dict = None
@@ -220,7 +222,7 @@ class Batch(object):
             else:
                 seq2_idx = []
                 for word in seq2.words:
-                    idx = word_vocab.getIndex(word)
+                    idx = word_vocab.get_index(word)
                     seq2_idx.append(idx)
             self.out_seq_src.append(seq2.src)
             self.out_seqs.append(seq2_idx)
@@ -230,13 +232,12 @@ class Batch(object):
         self.out_seq_lens = np.array(self.out_seq_lens, dtype=np.int32)
 
 class DataStream(object):
-    def __init__(self,
-        all_instances, word_vocab, node_vocab, node_type_vocab, edge_type_vocab,
-        config=None, isShuffle=False, isLoop=False, isSort=True, batch_size=-1, ext_vocab=False, bert_tokenizer=None
+    def __init__(self, all_instances: Dataset, word_vocab: Vocabulary,
+        is_shuffle=False, is_loop=False, is_sort=True, batch_size=-1, ext_vocab=False,
     ):
         if batch_size == -1:
             batch_size = config.BATCH_SIZE
-        if isSort:
+        if is_sort:
             all_instances = sorted(
                 all_instances,
                 key=lambda instance: len(instance[0].graph['g_node_name_words']),
@@ -246,17 +247,17 @@ class DataStream(object):
         batch_spans = _make_batches(self.num_instances, batch_size)
         self.batches = []
         for batch_index, (batch_start, batch_end) in enumerate(batch_spans):
-            cur_instances = all_instances[batch_start:batch_end]
+            cur_instances: Dataset = all_instances[batch_start:batch_end]
             cur_batch = Batch(
-                cur_instances, word_vocab, node_vocab, node_type_vocab, edge_type_vocab, ext_vocab=ext_vocab,
+                cur_instances, word_vocab, ext_vocab=ext_vocab,
             )
             self.batches.append(cur_batch)
         self.num_batch = len(self.batches)
         self.index_array = np.arange(self.num_batch)
-        self.isShuffle = isShuffle
+        self.isShuffle = is_shuffle
         if self.isShuffle:
             np.random.shuffle(self.index_array)
-        self.isLoop = isLoop
+        self.isLoop = is_loop
         self.cur_pointer = 0
 
     def next_batch(self):
