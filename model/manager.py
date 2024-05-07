@@ -6,7 +6,7 @@ import torch.backends.cudnn as cudnn
 
 import config
 from model import Model
-from utils import AverageMeter, Dataset, DataStream, get_datasets, Logger, QGEvalCap, Timer, vectorize_input
+from utils import AverageMeter, Dataset, DataStream, evaluate_predictions, get_datasets, Logger, Timer, vectorize_input
 
 class ModelManager(object):
     def __init__(self):
@@ -188,16 +188,6 @@ class ModelManager(object):
             raise ValueError(f"mode = {mode} not supported.")
         return format_str
 
-    def evaluate_predictions(self, target_src, decoded_text):
-        assert len(target_src) == len(decoded_text)
-        eval_targets = {}
-        eval_predictions = {}
-        for idx in range(len(target_src)):
-            eval_targets[idx] = [target_src[idx]]
-            eval_predictions[idx] = [decoded_text[idx]]
-        qg_eval = QGEvalCap(eval_targets, eval_predictions)
-        return qg_eval.evaluate()
-
     def train(self):
         self.is_test = False
         timer = Timer("Train", self.logger)
@@ -275,7 +265,7 @@ class ModelManager(object):
         )
         timer.finish()
 
-        metrics = self.evaluate_predictions(gold, output)
+        metrics = evaluate_predictions(gold, output)
         message_str = f"[test] | test_exs = {self._n_test_examples} | steps: [{self._n_test_batches}]"
         self.logger.log(message_str)
 

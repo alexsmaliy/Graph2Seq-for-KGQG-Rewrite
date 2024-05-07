@@ -4,6 +4,55 @@ from json import encoder
 import math
 
 import numpy as np
+import torch
+
+def batch_decoded_index2word(decoded_tokens, vocab, oov_dict):
+    decoded_batch = []
+    if not isinstance(decoded_tokens, list):
+        decoded_tokens = decoded_tokens.transpose(0, 1).tolist()
+    for i, doc in enumerate(decoded_tokens):
+        decoded_doc = []
+        for word_idx in doc:
+            if word_idx == vocab.SOS:
+                continue
+            if word_idx == vocab.EOS:
+                break
+            if word_idx >= len(vocab):
+                word = oov_dict.index2word.get((i, word_idx), vocab.unk_token)
+                word = " ".join(word)
+            else:
+                word = vocab.getWord(word_idx)
+            decoded_doc.append(word)
+        decoded_batch.append(" ".join(decoded_doc))
+    return decoded_batch
+
+def eval_decode_batch(batch, network, vocab, criterion=None, show_cover_loss=False):
+    """Test the `network` on the `batch`, return the decoded textual tokens and the Output."""
+    with torch.no_grad():
+        ext_vocab_size = batch["oov_dict"].ext_vocab_size if batch["oov_dict"] else None
+        if criterion is None:
+            target_tensor = None
+        else:
+            target_tensor = batch["targets"]
+        out = network(
+            batch,
+            target_tensor,
+            criterion,
+            ext_vocab_size=ext_vocab_size,
+            include_cover_loss=show_cover_loss,
+        )
+        decoded_batch = batch_decoded_index2word(out.decoded_tokens, vocab, batch["oov_dict"])
+    return decoded_batch, out
+
+def evaluate_predictions(target_src, decoded_text):
+    assert len(target_src) == len(decoded_text)
+    eval_targets = {}
+    eval_predictions = {}
+    for idx in range(len(target_src)):
+        eval_targets[idx] = [target_src[idx]]
+        eval_predictions[idx] = [decoded_text[idx]]
+    qg_eval = QGEvalCap(eval_targets, eval_predictions)
+    return qg_eval.evaluate()
 
 def precook(s, n=4):
     """Takes a string as input and returns an object that can be given to

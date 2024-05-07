@@ -7,9 +7,9 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import config
-from modules import Graph2SeqModule
+from modules import beam_search, Graph2SeqModule
 from modules.vocab import load_or_init
-from utils import Dataset, Logger
+from utils import Dataset, eval_decode_batch, evaluate_predictions, Logger
 
 class Model(object):
     def __init__(self, train_data: Dataset, device: torch.device, logger: Logger) -> None:
@@ -113,6 +113,8 @@ class Model(object):
         batch, step, forcing_ratio=1, rl_ratio=0, update=True, out_predictions=False, mode="train",
     ):
         self.network.train(update)
+        decoded_batch = loss_value = metrics = None
+
         if mode == "train":
             loss, loss_value, metrics = train_batch(
                 batch,
@@ -121,7 +123,6 @@ class Model(object):
                 self.criterion,
                 forcing_ratio,
                 rl_ratio,
-                self.config,
                 wmd=self.wmd,
             )
             loss.backward()
@@ -134,7 +135,7 @@ class Model(object):
             self.optimizer.zero_grad()
 
         elif mode == "dev":
-            decoded_batch, loss_value, metrics = dev_batch(
+            decoded_batch, loss_value, metrics = self.dev_batch(
                 batch,
                 self.network,
                 self.vocab_model.word_vocab,
@@ -143,7 +144,9 @@ class Model(object):
             )
 
         elif mode == "test":
-            decoded_batch, metrics = test_batch(batch, self.network, self.vocab_model.word_vocab)
+            decoded_batch, metrics = self.test_batch(
+                batch, self.network, self.vocab_model.word_vocab,
+            )
             loss_value = None
 
         output = {
@@ -154,3 +157,22 @@ class Model(object):
         if mode == "test" and out_predictions:
             output["predictions"] = decoded_batch
         return output
+
+    def dev_batch(self, batch, network, vocab, criterion=None, show_cover_loss=False):
+        """Test the `network` on `batch`, return the ROUGE score and the loss."""
+        network.train(False)
+        decoded_batch, out = eval_decode_batch(
+            batch,
+            network,
+            vocab,
+            criterion=criterion,
+            show_cover_loss=show_cover_loss,
+        )
+        metrics = evaluate_predictions(batch["target_src"], decoded_batch)
+        return decoded_batch, out.loss_value, metrics
+
+    def test_batch(self, batch, network, vocab):
+        network.train(False)
+        decoded_batch = beam_search(batch, network, vocab)
+        metrics = evaluate_predictions(batch["target_src"], decoded_batch)
+        return decoded_batch, metrics

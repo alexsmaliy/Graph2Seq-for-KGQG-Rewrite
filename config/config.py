@@ -41,6 +41,8 @@ VERBOSE = 1000 # print every N batches
 
 BEAM_SIZE = 5 # for beam search
 BLOCK_NGRAM_REPEAT = 0 # stop n-gram repetition during decoding
+MAX_OUT_LENGTH = 25 # 25-36
+MIN_OUT_LENGTH = 4 # 4-6
 OUT_PREDICTIONS = True # log predictions
 
 GRAD_CLIP = 10
