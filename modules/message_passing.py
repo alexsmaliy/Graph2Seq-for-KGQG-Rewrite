@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
 
-import config
-from utils import Logger
-
 class GraphMessagePassing(nn.Module):
     def __init__(self):
         super(GraphMessagePassing, self).__init__()

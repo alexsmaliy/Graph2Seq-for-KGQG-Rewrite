@@ -26,6 +26,14 @@ def batch_decoded_index2word(decoded_tokens, vocab, oov_dict):
         decoded_batch.append(" ".join(decoded_doc))
     return decoded_batch
 
+def eval_batch_output(target_src, vocab, oov_dict, *pred_tensors):
+  decoded_batch = [
+      batch_decoded_index2word(pred_tensor, vocab, oov_dict)
+      for pred_tensor in pred_tensors
+  ]
+  metrics = [evaluate_predictions(target_src, x) for x in decoded_batch]
+  return metrics
+
 def eval_decode_batch(batch, network, vocab, criterion=None, show_cover_loss=False):
     """Test the `network` on the `batch`, return the decoded textual tokens and the Output."""
     with torch.no_grad():

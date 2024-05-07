@@ -122,7 +122,7 @@ class Graph2SeqModule(nn.Module):
     def forward(
         self, ex, target_tensor=None, criterion=None, criterion_reduction=True, criterion_nll_only=False, rl_loss=False,
         *, forcing_ratio=0, partial_forcing=True, ext_vocab_size=None, sample=False, saved_out: Graph2SeqOutput=None,
-        visualize: bool=None, include_cover_loss: bool=False) -> Graph2SeqOutput:
+        visualize: bool=None, include_cover_loss=False) -> Graph2SeqOutput:
         """
             :param ex:
             :param target_tensor: tensor of word indices, (batch size x tgt seq len)

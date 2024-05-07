@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from torch import nn
 
 def create_mask(x, N, device=None):
     x = x.data

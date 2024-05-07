@@ -38,7 +38,7 @@ class EncoderRNN(nn.Module):
             x is a 3-tensor of [batch_size * max_length * emb_dim]
             xlen is a 1-tensor of [batch_size]
         """
-        print("Entered LSTM forward pass!") # TODO remove
+        self.logger.log("Entered LSTM forward pass!") # TODO remove
         sorted_xlen, indexes = torch.sort(xlen, dim=0, descending=True) # sort by batch size
         lst = sorted_xlen.data.tolist()
         x = nn.utils.rnn.pack_padded_sequence(x[indexes], lst, batch_first=True)

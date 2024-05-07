@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import config
 from modules import beam_search, Graph2SeqModule
 from modules.vocab import load_or_init
-from utils import Dataset, eval_decode_batch, evaluate_predictions, Logger
+from utils import Dataset, eval_batch_output, eval_decode_batch, evaluate_predictions, Logger, send_to_device
 
 class Model(object):
     def __init__(self, train_data: Dataset, device: torch.device, logger: Logger) -> None:
@@ -94,7 +94,7 @@ class Model(object):
         self.optimizer = optim.Adam(parameters, lr=config.LEARNING_RATE)
         self.scheduler = ReduceLROnPlateau(
             self.optimizer,
-            mode='max',
+            mode="max",
             factor=0.5,
             patience=2,
             verbose=True,
@@ -116,14 +116,8 @@ class Model(object):
         decoded_batch = loss_value = metrics = None
 
         if mode == "train":
-            loss, loss_value, metrics = train_batch(
-                batch,
-                self.network,
-                self.vocab_model.word_vocab,
-                self.criterion,
-                forcing_ratio,
-                rl_ratio,
-                wmd=self.wmd,
+            loss, loss_value, metrics = self.train_batch(
+                batch, self.criterion, forcing_ratio, rl_ratio, wmd=self.wmd,
             )
             loss.backward()
 
@@ -137,16 +131,12 @@ class Model(object):
         elif mode == "dev":
             decoded_batch, loss_value, metrics = self.dev_batch(
                 batch,
-                self.network,
-                self.vocab_model.word_vocab,
                 criterion=None,
                 show_cover_loss=True,
             )
 
         elif mode == "test":
-            decoded_batch, metrics = self.test_batch(
-                batch, self.network, self.vocab_model.word_vocab,
-            )
+            decoded_batch, metrics = self.test_batch(batch)
             loss_value = None
 
         output = {
@@ -158,8 +148,11 @@ class Model(object):
             output["predictions"] = decoded_batch
         return output
 
-    def dev_batch(self, batch, network, vocab, criterion=None, show_cover_loss=False):
+    def dev_batch(self, batch, criterion=None, show_cover_loss=False):
         """Test the `network` on `batch`, return the ROUGE score and the loss."""
+        network = self.network
+        vocab = self.vocab_model.word_vocab
+
         network.train(False)
         decoded_batch, out = eval_decode_batch(
             batch,
@@ -171,8 +164,94 @@ class Model(object):
         metrics = evaluate_predictions(batch["target_src"], decoded_batch)
         return decoded_batch, out.loss_value, metrics
 
-    def test_batch(self, batch, network, vocab):
+    def test_batch(self, batch):
+        network = self.network
+        vocab = self.vocab_model.word_vocab
         network.train(False)
         decoded_batch = beam_search(batch, network, vocab)
         metrics = evaluate_predictions(batch["target_src"], decoded_batch)
         return decoded_batch, metrics
+
+    def train_batch(self, batch, criterion, forcing_ratio, rl_ratio, wmd=None):
+        network = self.network
+        vocab = self.vocab_model.word_vocab
+        network.train(True)
+        with torch.set_grad_enabled(True):
+            ext_vocab_size = batch["oov_dict"].ext_vocab_size if batch["oov_dict"] else None
+            network_out = network(
+                batch,
+                batch["targets"],
+                criterion,
+                forcing_ratio=forcing_ratio,
+                partial_forcing=True,
+                sample=False,
+                ext_vocab_size=ext_vocab_size,
+                include_cover_loss=True,
+            )
+
+            if rl_ratio > 0:
+                batch_size = batch["batch_size"]
+                sample_out = network(
+                    batch,
+                    saved_out=network_out,
+                    criterion=criterion,
+                    criterion_reduction=False,
+                    criterion_nll_only=True,
+                    sample=True,
+                    ext_vocab_size=ext_vocab_size,
+                )
+                baseline_out = network(
+                    batch,
+                    saved_out=network_out,
+                    visualize=False,
+                    ext_vocab_size=ext_vocab_size,
+                )
+
+                sample_out_decoded = sample_out.decoded_tokens.transpose(0, 1)
+                baseline_out_decoded = baseline_out.decoded_tokens.transpose(0, 1)
+
+                neg_reward = []
+                rl_reward_metric_list = config.RL_REWARD_METRIC.split(',')
+                rl_reward_metric_ratio = None
+
+                for i in range(batch_size):
+                    scores = eval_batch_output(
+                        [batch["target_src"][i]],
+                        vocab,
+                        batch["oov_dict"],
+                        [sample_out_decoded[i]],
+                        [baseline_out_decoded[i]],
+                    )
+                    reward_ = 0
+                    for index, rl_reward_metric in enumerate(rl_reward_metric_list):
+                        greedy_score = scores[1][rl_reward_metric]
+                        tmp_reward_ = (scores[0][rl_reward_metric] - greedy_score)
+                        if rl_reward_metric_ratio is not None:
+                            tmp_reward_ = tmp_reward_ * rl_reward_metric_ratio[index]
+                        reward_ += tmp_reward_
+
+                    neg_reward.append(reward_)
+
+                neg_reward = send_to_device(torch.Tensor(neg_reward), network.device)
+
+                rl_loss = torch.sum(neg_reward * sample_out.loss) / batch_size
+                rl_loss_value = torch.sum(neg_reward * sample_out.loss_value).item() / batch_size
+                loss = (1 - rl_ratio) * network_out.loss + rl_ratio * rl_loss
+                loss_value = (1 - rl_ratio) * network_out.loss_value + rl_ratio * rl_loss_value
+                metrics = eval_batch_output(
+                    batch["target_src"],
+                    vocab,
+                    batch["oov_dict"],
+                    baseline_out.decoded_tokens,
+                )[0]
+
+            else:
+                loss = network_out.loss
+                loss_value = network_out.loss_value
+                metrics = eval_batch_output(
+                    batch["target_src"],
+                    vocab,
+                    batch["oov_dict"],
+                    network_out.decoded_tokens,
+                )[0]
+        return loss, loss_value, metrics
