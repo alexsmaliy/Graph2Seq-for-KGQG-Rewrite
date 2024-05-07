@@ -39,6 +39,12 @@ RL_START_EPOCH = 1
 SAVE_PARAMS = True
 VERBOSE = 1000 # print every N batches
 
+BEAM_SIZE = 5 # for beam search
+BLOCK_NGRAM_REPEAT = 0 # stop n-gram repetition during decoding
+OUT_PREDICTIONS = True # log predictions
+
+GRAD_CLIP = 10
+
 USE_CUDA = True
 CUDA_DEVICE_ID = 1
 

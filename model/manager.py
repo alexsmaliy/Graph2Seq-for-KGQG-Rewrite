@@ -1,3 +1,4 @@
+import os
 import time
 
 import torch
@@ -5,7 +6,7 @@ import torch.backends.cudnn as cudnn
 
 import config
 from model import Model
-from utils import AverageMeter, Dataset, DataStream, get_datasets, Logger, Timer, vectorize_input
+from utils import AverageMeter, Dataset, DataStream, get_datasets, Logger, QGEvalCap, Timer, vectorize_input
 
 class ModelManager(object):
     def __init__(self):
@@ -112,61 +113,6 @@ class ModelManager(object):
         end = " <<<<<<<<<<<<<<<< MODEL SUMMARY >>>>>>>>>>>>>>>> "
         return "\n".join([start, info, end])
 
-    def train(self):
-        self.is_test = False
-        timer = Timer("Train", self.logger)
-
-        if config.PRETRAINED:
-            self._epoch = self._best_epoch = self.model.saved_epoch
-        else:
-            self._epoch = self._best_epoch = 0
-        self._best_metrics = {}
-
-        for k in self._dev_metrics:
-            self._best_metrics[k] = self._dev_metrics[k].mean()
-
-        self._reset_metrics()
-        while self._stop_condition(self._epoch, config.PATIENCE):
-            self._epoch += 1
-            rl_ratio = config.RL_RATIO if self._epoch >= config.RL_START_EPOCH else 0
-            self.logger.log(f"RL ratio: {rl_ratio}")
-
-            self.logger.log(f">>> Train Epoch: [{self._epoch} / {config.MAX_EPOCHS}]", self.logger.metrics_log)
-            self._run_epoch(self.train_loader, training=True, rl_ratio=rl_ratio, verbose=config.VERBOSE)
-            train_epoch_time = timer.interval(f"Training Epoch {self._epoch}")
-            metrics_message = f"Training Epoch {self._epoch} -- Loss: {self._train_loss.mean():0.5f}"
-            metrics_message += self.metric_to_str(self._train_metrics)
-            self.logger.log(metrics_message, self.logger.metrics_log)
-
-            self.logger.log(f">>> Dev Epoch: [{self._epoch} / {config.MAX_EPOCHS}]", self.logger.metrics_log)
-            self._run_epoch(self.dev_loader, training=False, verbose=config.VERBOSE)
-            timer.interval(f"Validation Epoch {self._epoch}")
-            metrics_message = f"Validation Epoch {self._epoch} -- Loss: {self._dev_loss.mean():0.5f}"
-            metrics_message += self.metric_to_str(self._dev_metrics)
-            self.logger.log(metrics_message, self.logger.metrics_log)
-
-            self.model.scheduler.step(self._dev_metrics[config.EARLY_STOP_METRIC].mean())
-            if self._best_metrics[config.EARLY_STOP_METRIC] <= self._dev_metrics[config.EARLY_STOP_METRIC].mean():
-                self._best_epoch = self._epoch
-                for k in self._dev_metrics:
-                    self._best_metrics[k] = self._dev_metrics[k].mean()
-                if config.SAVE_PARAMS:
-                    self.model.save(self.logger.log_dir, self._epoch)
-                    print('Saved model to {}'.format(self.logger.log_dir))
-                metrics_message = f"!!! Updated: {self.metric_to_str(self._best_metrics)}"
-                self.logger.log(metrics_message, self.logger.metrics_log, echo=False)
-                self.logger.log(metrics_message, echo=True)
-            self._reset_metrics()
-            if rl_ratio > 0:
-                config.RL_RATIO = min(config.MAX_RL_RATIO, config.RL_RATIO ** config.RL_RATIO_POWER)
-
-        timer.finish()
-        self.training_time = timer.total
-        metrics_message = f"Finished Training: {self.logger.log_dir}\n{self.summary()}"
-        self.logger.log(metrics_message, self.logger.metrics_log, echo=False)
-        self.logger.log(metrics_message, echo=True)
-        return self._best_metrics
-
     def _run_epoch(self, data_loader: DataStream, training=True, rl_ratio=0.0, verbose=10, out_predictions=False):
         start_time = time.time()
         mode = "train" if training else ("test" if self.is_test else "dev")
@@ -241,3 +187,109 @@ class ModelManager(object):
         else:
             raise ValueError(f"mode = {mode} not supported.")
         return format_str
+
+    def evaluate_predictions(self, target_src, decoded_text):
+        assert len(target_src) == len(decoded_text)
+        eval_targets = {}
+        eval_predictions = {}
+        for idx in range(len(target_src)):
+            eval_targets[idx] = [target_src[idx]]
+            eval_predictions[idx] = [decoded_text[idx]]
+        qg_eval = QGEvalCap(eval_targets, eval_predictions)
+        return qg_eval.evaluate()
+
+    def train(self):
+        self.is_test = False
+        timer = Timer("Train", self.logger)
+
+        if config.PRETRAINED:
+            self._epoch = self._best_epoch = self.model.saved_epoch
+        else:
+            self._epoch = self._best_epoch = 0
+        self._best_metrics = {}
+
+        for k in self._dev_metrics:
+            self._best_metrics[k] = self._dev_metrics[k].mean()
+
+        self._reset_metrics()
+        while self._stop_condition(self._epoch, config.PATIENCE):
+            self._epoch += 1
+            rl_ratio = config.RL_RATIO if self._epoch >= config.RL_START_EPOCH else 0
+            self.logger.log(f"RL ratio: {rl_ratio}")
+
+            self.logger.log(f">>> Train Epoch: [{self._epoch} / {config.MAX_EPOCHS}]", self.logger.metrics_log)
+            self._run_epoch(self.train_loader, training=True, rl_ratio=rl_ratio, verbose=config.VERBOSE)
+            train_epoch_time = timer.interval(f"Training Epoch {self._epoch}")
+            metrics_message = f"Training Epoch {self._epoch} -- Loss: {self._train_loss.mean():0.5f}"
+            metrics_message += self.metric_to_str(self._train_metrics)
+            self.logger.log(metrics_message, self.logger.metrics_log)
+
+            self.logger.log(f">>> Dev Epoch: [{self._epoch} / {config.MAX_EPOCHS}]", self.logger.metrics_log)
+            self._run_epoch(self.dev_loader, training=False, verbose=config.VERBOSE)
+            timer.interval(f"Validation Epoch {self._epoch}")
+            metrics_message = f"Validation Epoch {self._epoch} -- Loss: {self._dev_loss.mean():0.5f}"
+            metrics_message += self.metric_to_str(self._dev_metrics)
+            self.logger.log(metrics_message, self.logger.metrics_log)
+
+            self.model.scheduler.step(self._dev_metrics[config.EARLY_STOP_METRIC].mean())
+            if self._best_metrics[config.EARLY_STOP_METRIC] <= self._dev_metrics[config.EARLY_STOP_METRIC].mean():
+                self._best_epoch = self._epoch
+                for k in self._dev_metrics:
+                    self._best_metrics[k] = self._dev_metrics[k].mean()
+                if config.SAVE_PARAMS:
+                    self.model.save(self.logger.log_dir, self._epoch)
+                    print('Saved model to {}'.format(self.logger.log_dir))
+                metrics_message = f"!!! Updated: {self.metric_to_str(self._best_metrics)}"
+                self.logger.log(metrics_message, self.logger.metrics_log, echo=False)
+                self.logger.log(metrics_message, echo=True)
+            self._reset_metrics()
+            if rl_ratio > 0:
+                config.RL_RATIO = min(config.MAX_RL_RATIO, config.RL_RATIO ** config.RL_RATIO_POWER)
+
+        timer.finish()
+        self.training_time = timer.total
+        metrics_message = f"Finished Training: {self.logger.log_dir}\n{self.summary()}"
+        self.logger.log(metrics_message, self.logger.metrics_log, echo=False)
+        self.logger.log(metrics_message, echo=True)
+        return self._best_metrics
+
+    def test(self):
+        if self.test_loader is None:
+            self.logger.log("No test dataset -- skipping testing.")
+            return
+
+        self.logger.log("Restoring best model.")
+        self.model.init_saved_network(self.logger.log_dir)
+        self.model.network = self.model.network.to(self.device)
+
+        self.is_test = True
+        self._reset_metrics()
+
+        timer = Timer("Test", self.logger)
+        for param in self.model.network.parameters():
+            param.requires_grad = False
+
+        self.logger.log(f"[ Beam size: {config.BEAM_SIZE} ]")
+        output, gold = self._run_epoch(
+            self.test_loader, training=False, verbose=0, out_predictions=config.OUT_PREDICTIONS,
+        )
+        timer.finish()
+
+        metrics = self.evaluate_predictions(gold, output)
+        message_str = f"[test] | test_exs = {self._n_test_examples} | steps: [{self._n_test_batches}]"
+        self.logger.log(message_str)
+
+        if config.OUT_PREDICTIONS:
+            out_dir = self.logger.log_dir
+            out_path = os.path.join(
+                out_dir,
+                f"beam_{config.BEAM_SIZE}_block_ngram_repeat_{config.BLOCK_NGRAM_REPEAT}_test_pred.txt"
+            )
+            with open(out_path, "w") as pred_f:
+                pred_f.write("\n".join(output))
+            with open(os.path.join(out_dir, "test_gold.txt"), "w") as ref_f:
+                ref_f.write("\n".join(gold))
+            self.logger.log(f"Saved predictions to {out_path}")
+
+        self.logger.log(f"Finished Testing: {self.logger.log_dir}")
+        return metrics
