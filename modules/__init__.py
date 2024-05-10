@@ -6,4 +6,4 @@ from .graph_encoder import GraphNN
 from .gated_fusion import GatedFusionModule
 from .gated_recurrent_unit import GRUModule
 from .message_passing import GraphMessagePassing
-from .vocab import VocabModel, Vocabulary, VocabStats
+# from .vocab import VocabModel, Vocabulary, VocabStats

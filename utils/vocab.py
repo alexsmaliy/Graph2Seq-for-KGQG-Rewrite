@@ -8,7 +8,11 @@ import re
 from typing import TypedDict
 
 import config
-from utils import Dataset, EOS_TOKEN, SOS_TOKEN, PAD_TOKEN, UNK_TOKEN, Logger, map_to_index
+from .loading import Dataset
+from .logging import Logger
+from .strings import EOS_TOKEN, SOS_TOKEN, PAD_TOKEN, UNK_TOKEN
+from .misc import map_to_index
+# from utils import Dataset, EOS_TOKEN, SOS_TOKEN, PAD_TOKEN, UNK_TOKEN, Logger, map_to_index
 
 class VocabStats(TypedDict):
     word_count: Counter

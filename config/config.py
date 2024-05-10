@@ -48,7 +48,7 @@ OUT_PREDICTIONS = True # log predictions
 
 GRAD_CLIP = 10
 
-USE_CUDA = True
+USE_CUDA = False
 CUDA_DEVICE_ID = 1
 
 USE_LOGGING = True

@@ -52,7 +52,7 @@ class GraphNN(nn.Module):
 
         for _ in range(self.graph_hops):
             bw_agg_state = \
-                self.static_graph_mp.mp_func(node_state, edge_vec, node2edge, edge2node)
+                self.static_graph_mp.msg_pass(node_state, edge_vec, node2edge, edge2node)
 
             # this direction is transposed to reverse the edges
             fw_agg_state = self.static_graph_mp.msg_pass(

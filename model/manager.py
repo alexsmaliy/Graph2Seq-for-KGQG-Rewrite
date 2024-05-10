@@ -5,7 +5,7 @@ import torch
 import torch.backends.cudnn as cudnn
 
 import config
-from model import Model
+from .model import Model
 from utils import AverageMeter, Dataset, DataStream, evaluate_predictions, get_datasets, Logger, Timer, vectorize_input
 
 class ModelManager(object):
