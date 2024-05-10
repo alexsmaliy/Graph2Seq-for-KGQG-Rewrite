@@ -8,8 +8,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import config
 from modules import beam_search, Graph2SeqModule
-from modules.vocab import load_or_init
-from utils import Dataset, eval_batch_output, eval_decode_batch, evaluate_predictions, Logger, send_to_device
+# from modules.vocab import load_or_init
+from utils import Dataset, eval_batch_output, eval_decode_batch, evaluate_predictions, load_or_init, Logger, send_to_device
 
 class Model(object):
     def __init__(self, train_data: Dataset, device: torch.device, logger: Logger) -> None:

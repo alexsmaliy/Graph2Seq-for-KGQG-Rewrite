@@ -7,8 +7,8 @@ import config
 from .decoder import DecoderRNN
 from .encoder import EncoderRNN
 from .graph_encoder import GraphNN
-from .vocab import Vocabulary
-from utils import create_mask, dropout, EPS, Logger, send_to_device, PAD_TOKEN, UNK_TOKEN
+# from .vocab import Vocabulary
+from utils import create_mask, dropout, EPS, Logger, send_to_device, PAD_TOKEN, UNK_TOKEN, Vocabulary
 
 class Graph2SeqOutput(object):
     def __init__(self,
@@ -206,7 +206,7 @@ class Graph2SeqModule(nn.Module):
         # loop to generate tokens
         for di in range(target_length):
             decoder_embedded = self.word_embed(self.filter_out_of_vocab(decoder_input, ext_vocab_size))
-            decoder_embedded = dropout(decoder_embedded, self.word_dropout, shared_axes=[-2], training=self.training)
+            decoder_embedded = dropout(decoder_embedded, config.WORD_DROPOUT, shared_axes=[-2], training=self.training)
             if enc_attn_weights:
                 coverage_vector = self.get_coverage_vector(enc_attn_weights)
             else:
@@ -337,8 +337,8 @@ class Graph2SeqModule(nn.Module):
             init_node_vec,
             init_edge_vec,
             (input_graphs['node2edge'], input_graphs['edge2node']),
-            node_mask=input_mask,
-            ans_state=None,
+            # node_mask=input_mask,
+            # ans_state=None,
         )
         encoder_outputs = node_embedding
         encoder_state = (graph_embedding, graph_embedding)

@@ -3,8 +3,10 @@ from scipy.sparse import *
 import torch
 
 import config
-from modules import Vocabulary
-from utils import Dataset, pad_2d_vals_no_size, pad_3d_vals_no_size
+from .loading import Dataset
+from .tensors import pad_2d_vals_no_size, pad_3d_vals_no_size
+from .vocab import Vocabulary
+# from utils import Dataset, pad_2d_vals_no_size, pad_3d_vals_no_size
 
 def find_sublist(src_list, a_list):
     indices = []
@@ -29,7 +31,7 @@ def seq2ext_vocab_id(idx_in_batch, seq, word_vocab, oov_dict):
     i = 0
     while i < len(seq):
         if len(matched_pos) == 0 or i < matched_pos[0][0][0]:
-            seq_idx.append(word_vocab.getIndex(seq[i]))
+            seq_idx.append(word_vocab.get_index(seq[i]))
             i += 1
         else:
             pos, key = matched_pos.pop(0)
